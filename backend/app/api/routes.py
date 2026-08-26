@@ -21,6 +21,10 @@ from app.summarization import hierarchical
 router = APIRouter(prefix="/api")
 
 
+class UrlRequest(BaseModel):
+    url: str = Field(min_length=4, max_length=500)
+
+
 class QueryRequest(BaseModel):
     doc_id: str
     question: str = Field(min_length=1, max_length=1000)
@@ -57,6 +61,20 @@ async def upload(file: UploadFile = File(...)) -> dict:
         raise HTTPException(400, "這個檔案不是 PDF")
 
     job = await documents.submit(file.filename, data)
+    return {"job_id": job.job_id, "doc_id": job.doc_id, "stage": job.stage}
+
+
+@router.post("/documents/from-url", status_code=202)
+async def upload_from_url(req: UrlRequest) -> dict:
+    """由網址匯入。作業指定的文件本身就是一個網址，貼上比開檔案視窗自然。"""
+    from app.services.fetcher import UnsafeUrl
+
+    try:
+        job = await documents.submit_url(req.url)
+    except UnsafeUrl as exc:
+        raise HTTPException(400, str(exc)) from None
+    except Exception as exc:                              # noqa: BLE001
+        raise HTTPException(502, f"無法取得檔案：{exc}") from None
     return {"job_id": job.job_id, "doc_id": job.doc_id, "stage": job.stage}
 
 

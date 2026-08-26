@@ -81,7 +81,15 @@ def doc_id_for(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()[:16]
 
 
-async def submit(filename: str, data: bytes) -> Job:
+async def submit_url(url: str) -> Job:
+    """由網址匯入。安全檢查在 fetcher，此處只負責接上既有的索引流程。"""
+    from app.services.fetcher import fetch
+
+    fetched = await fetch(url)
+    return await submit(fetched.title or fetched.filename, fetched.data, source_url=fetched.url)
+
+
+async def submit(filename: str, data: bytes, source_url: str | None = None) -> Job:
     doc_id = doc_id_for(data)
     job = Job(job_id=f"j{len(_jobs) + 1:05d}", doc_id=doc_id, filename=filename)
     _jobs[job.job_id] = job
@@ -94,7 +102,7 @@ async def submit(filename: str, data: bytes) -> Job:
     path.parent.mkdir(parents=True, exist_ok=True)
     await asyncio.to_thread(path.write_bytes, data)
     (path.parent / "source.json").write_text(
-        json.dumps({"filename": filename,
+        json.dumps({"filename": filename, "url": source_url,
                     "uploaded": datetime.now(timezone.utc).isoformat(timespec="seconds")},
                    ensure_ascii=False),
         encoding="utf-8",
@@ -175,6 +183,7 @@ def list_documents() -> list[dict]:
             "pages": prof.get("n_pages"),
             "chunks": meta.get("n_chunks"),
             "tables": meta.get("n_tables"),
+            "url": info.get("url"),
             "section_source": prof.get("section_source"),
             "has_summary": (d.parent / "summary.json").exists(),
         })

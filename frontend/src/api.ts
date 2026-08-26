@@ -10,6 +10,7 @@ export type DocSummary = {
   chunks: number | null;
   tables: number | null;
   section_source: string | null;
+  url?: string | null;
   has_summary: boolean;
 };
 
@@ -41,6 +42,15 @@ async function json<T>(res: Response): Promise<T> {
   if (!res.ok) throw new Error((await res.json().catch(() => ({}))).detail ?? `HTTP ${res.status}`);
   return res.json();
 }
+
+export const uploadFromUrl = async (url: string) =>
+  json<{ job_id: string; doc_id: string }>(
+    await fetch(`${BASE}/api/documents/from-url`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ url }),
+    }),
+  );
 
 export const listDocuments = () => fetch(`${BASE}/api/documents`).then(json<DocSummary[]>);
 

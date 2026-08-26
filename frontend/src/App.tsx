@@ -37,12 +37,15 @@ export default function App() {
     }
   }
 
-  async function handleUpload(file: File) {
+  const handleUpload = (file: File) => start(() => api.upload(file));
+  const handleUploadUrl = (url: string) => start(() => api.uploadFromUrl(url));
+
+  async function start(begin: () => Promise<{ job_id: string; doc_id: string }>) {
     setError(null);
     setTurns([]);
     setQuick([]);
     try {
-      const { job_id, doc_id } = await api.upload(file);
+      const { job_id, doc_id } = await begin();
       setActiveId(doc_id);
       setStage("queued");
       for await (const ev of api.jobEvents(job_id)) {
@@ -95,7 +98,7 @@ export default function App() {
       <div className="flex-1 min-h-0 flex">
         <DocumentPanel
           documents={documents} activeId={activeId} stage={stage} error={error}
-          onSelect={select} onUpload={handleUpload}
+          onSelect={select} onUpload={handleUpload} onUploadUrl={handleUploadUrl}
         />
         <Chat
           turns={turns} quickQuestions={quick} ready={ready} busy={busy}

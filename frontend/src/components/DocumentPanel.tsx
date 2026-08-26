@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import type { DocSummary } from "../api";
 
 const STAGE_LABEL: Record<string, string> = {
@@ -13,10 +13,14 @@ type Props = {
   error: string | null;
   onSelect: (id: string) => void;
   onUpload: (file: File) => void;
+  onUploadUrl: (url: string) => void;
 };
 
-export function DocumentPanel({ documents, activeId, stage, error, onSelect, onUpload }: Props) {
+export function DocumentPanel({
+  documents, activeId, stage, error, onSelect, onUpload, onUploadUrl,
+}: Props) {
   const input = useRef<HTMLInputElement>(null);
+  const [url, setUrl] = useState("");
   const busy = stage !== null && stage !== "ready" && stage !== "failed";
 
   return (
@@ -64,6 +68,31 @@ export function DocumentPanel({ documents, activeId, stage, error, onSelect, onU
         ref={input} type="file" accept="application/pdf" className="hidden"
         onChange={(e) => { const f = e.target.files?.[0]; if (f) onUpload(f); e.target.value = ""; }}
       />
+
+      <div className="flex flex-col gap-1">
+        <label className="text-xs text-ink-soft px-1">或貼上連結</label>
+        <div className="flex gap-1">
+          <input
+            value={url}
+            onChange={(e) => setUrl(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && url.trim()) { onUploadUrl(url.trim()); setUrl(""); }
+            }}
+            disabled={busy}
+            placeholder="arXiv 網址或 PDF 連結"
+            className="flex-1 min-w-0 rounded-lg border border-line bg-surface px-2 py-1.5
+                       text-xs outline-none focus:border-accent disabled:bg-surface-sunk"
+          />
+          <button
+            onClick={() => { if (url.trim()) { onUploadUrl(url.trim()); setUrl(""); } }}
+            disabled={busy || !url.trim()}
+            className="rounded-lg border border-line px-2 text-xs disabled:opacity-40
+                       hover:border-accent hover:text-accent-deep transition-colors"
+          >
+            匯入
+          </button>
+        </div>
+      </div>
 
       {error && <p className="text-xs text-red-700 px-1 leading-relaxed">{error}</p>}
     </aside>
