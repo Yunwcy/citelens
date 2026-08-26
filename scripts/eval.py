@@ -68,6 +68,9 @@ def evaluate(idx: DocumentIndex, case: Case, mode: str) -> tuple[int | None, int
     return first, len(covered)
 
 
+REPORT: dict = {"retrieval": {}, "tables": {}}
+
+
 def run_retrieval() -> list[str]:
     out = ["## 檢索準確度", "",
            f"文件：`{TARGET.name}` · 每組取前 {TOP_K} 名 · 數字為目標章節的名次（越小越好）", ""]
@@ -80,6 +83,12 @@ def run_retrieval() -> list[str]:
         idx = DocumentIndex.build(f"eval-{name}", res)
         stats[name] = {"chunks": len(res.chunks), "tables": len(res.tables)}
         results[name] = {c.query: evaluate(idx, c, cfg["mode"]) for c in CASES}
+        REPORT["retrieval"][name] = {
+            c.query: {"rank": results[name][c.query][0],
+                      "covered": results[name][c.query][1],
+                      "expected": len(c.expect)}
+            for c in CASES
+        }
 
     header = "| 查詢 | 期望章節 | " + " | ".join(n for n, _ in CONFIGS) + " |"
     out += [header, "|---|---|" + "---|" * len(CONFIGS)]
@@ -117,6 +126,8 @@ def run_tables() -> list[str]:
         n_prose += len(prose); n_fail += len(fail)
         out.append(f"| {pdf.name} | {len(res.tables)} | {len(data)} | {len(ok)} | "
                    f"{len(prose)} | {len(fail)} |")
+    REPORT["tables"] = {"偵測到": total, "數值型": n_data, "通過驗證": n_ok,
+                        "敘述型": n_prose, "驗證失敗": n_fail}
     out += ["",
             f"- 偵測到 {total} 張表，其中數值型 {n_data} 張、敘述型（案例研究等）{n_prose} 張",
             f"- **數值型表格的驗證通過率 {n_ok}/{n_data}"
@@ -146,6 +157,8 @@ def run_generality() -> list[str]:
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--md", default=None)
+    ap.add_argument("--publish", metavar="URL", nargs="?", const="http://localhost:8000",
+                    help="把結果發布到後端，使其出現在 Grafana 儀表板上")
     ap.add_argument("--only", choices=["retrieval", "tables", "generality"], default=None)
     args = ap.parse_args()
 
@@ -166,6 +179,13 @@ def main() -> None:
         Path(args.md).parent.mkdir(parents=True, exist_ok=True)
         Path(args.md).write_text(text, encoding="utf-8")
         print(f"\n已寫入 {args.md}")
+
+    if args.publish:
+        import httpx
+
+        r = httpx.post(f"{args.publish}/api/eval", json=REPORT, timeout=30)
+        r.raise_for_status()
+        print(f"已發布至 {args.publish} —— 儀表板的準確度面板將顯示這組數字")
 
 
 if __name__ == "__main__":

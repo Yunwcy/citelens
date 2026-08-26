@@ -6,7 +6,7 @@ JSONL 供離線報表與逐筆稽核，Prometheus 供即時觀察與 Grafana 儀
 """
 from __future__ import annotations
 
-from prometheus_client import CollectorRegistry, Counter, Histogram, generate_latest
+from prometheus_client import CollectorRegistry, Counter, Gauge, Histogram, generate_latest
 
 REGISTRY = CollectorRegistry()
 
@@ -28,6 +28,22 @@ DROPPED = Counter(
 )
 COST = Counter(
     "citelens_cost_usd_total", "累計模型成本（USD）", registry=REGISTRY,
+)
+CITED = Counter(
+    "citelens_answer_cited_total", "答案有標註引用編號的次數", ["cited"], registry=REGISTRY,
+)
+
+# --- 離線評估結果（由 scripts/eval.py 發布）---------------------------------
+EVAL_TOP3 = Gauge(
+    "citelens_eval_top3_hits", "五個查詢中目標章節進入前三名的題數", ["config"],
+    registry=REGISTRY,
+)
+EVAL_RANK = Gauge(
+    "citelens_eval_rank", "目標章節的名次（11 表示未進前十）", ["config", "query"],
+    registry=REGISTRY,
+)
+EVAL_TABLES = Gauge(
+    "citelens_eval_tables", "表格解析結果", ["state"], registry=REGISTRY,
 )
 
 # 桶界依實測分布設定：檢索在數十毫秒，生成在數秒
@@ -61,12 +77,19 @@ INDEX_SECONDS = Histogram(
 def observe(event: str, fields: dict) -> None:
     """由 metrics.record() 呼叫，把同一筆事件同步到 Prometheus。"""
     if event == "query":
-        QUERIES.labels(route=fields.get("route", "unknown")).inc()
-        RETRIEVAL_SECONDS.observe(fields.get("retrieval_ms", 0) / 1000)
-        LLM_SECONDS.observe(fields.get("llm_ms", 0) / 1000)
+        route = fields.get("route", "unknown")
+        QUERIES.labels(route=route).inc()
         REQUEST_SECONDS.observe(fields.get("total_ms", 0) / 1000)
-        PROMPT_TOKENS.observe(fields.get("prompt_tokens", 0))
         COST.inc(fields.get("cost_usd", 0))
+        CITED.labels(cited=str(fields.get("cited", True)).lower()).inc()
+
+        # 摘要路由不走檢索也不組裝脈絡，其 token 與耗時為 0。
+        # 一併記入直方圖會在圖上產生往下掉的假凹陷，
+        # 讓「脈絡用量」看起來像有時候只用了 0 個 token。
+        if route != "summary":
+            RETRIEVAL_SECONDS.observe(fields.get("retrieval_ms", 0) / 1000)
+            LLM_SECONDS.observe(fields.get("llm_ms", 0) / 1000)
+            PROMPT_TOKENS.observe(fields.get("prompt_tokens", 0))
         if fields.get("dropped"):
             DROPPED.inc(len(fields["dropped"]))
 
@@ -77,6 +100,22 @@ def observe(event: str, fields: dict) -> None:
         ok = fields.get("tables_validated", 0)
         TABLES.labels(validated="true").inc(ok)
         TABLES.labels(validated="false").inc(max(fields.get("tables", 0) - ok, 0))
+
+
+def publish_eval(report: dict) -> None:
+    """把離線評估結果寫成 gauge，讓準確度與執行指標出現在同一張儀表板上。
+
+    檢索準確度是離線評估出來的，不是每次查詢都能算 —— 因為需要事先標好
+    每個查詢的目標章節。因此由 scripts/eval.py 產生後發布到這裡。
+    """
+    for cfg, rows in report.get("retrieval", {}).items():
+        hits = sum(1 for r in rows.values() if r.get("rank") and r["rank"] <= 3)
+        EVAL_TOP3.labels(config=cfg).set(hits)
+        for query, r in rows.items():
+            EVAL_RANK.labels(config=cfg, query=query[:60]).set(r.get("rank") or 11)
+
+    for state, value in (report.get("tables") or {}).items():
+        EVAL_TABLES.labels(state=state).set(value)
 
 
 def render() -> bytes:

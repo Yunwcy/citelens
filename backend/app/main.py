@@ -22,6 +22,20 @@ async def lifespan(_: FastAPI):
     from app.retrieval.embedding import get_embedder
 
     get_embedder()
+
+    # 重新載入既有的評估結果：gauge 不會自行持久化，
+    # 重啟後儀表板的準確度面板會變空白。
+    eval_path = settings.storage_dir / "eval.json"
+    if eval_path.exists():
+        import json
+
+        from app.observability import prom
+
+        try:
+            prom.publish_eval(json.loads(eval_path.read_text(encoding="utf-8")))
+            log.info("已載入既有的評估結果")
+        except Exception:  # noqa: BLE001
+            log.warning("評估結果載入失敗", exc_info=True)
     log.info("啟動完成 · 檢索預算 %d tokens · 向量化後端 %s",
              settings.retrieval_budget, settings.embedding_backend)
     yield

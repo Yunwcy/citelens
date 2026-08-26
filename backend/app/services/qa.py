@@ -104,6 +104,7 @@ async def answer(
         model=settings.llm_model,
         embedding_backend=index.backend,
         n_sources=len(sources),
+        cited=bool(sources and sources[0].cited),
         **debug,
     )
     return Answer(text=result.text, sources=sources, debug=debug)
@@ -298,7 +299,8 @@ async def answer_stream(
     )
     metrics.record("query", doc_id=index.doc_id, question=question,
                    model=settings.llm_model, embedding_backend=index.backend,
-                   streamed=True, n_sources=len(sources), **debug)
+                   streamed=True, n_sources=len(sources),
+                   cited=bool(sources and sources[0].cited), **debug)
 
     yield {"type": "done",
            "sources": [asdict(s) for s in sources],

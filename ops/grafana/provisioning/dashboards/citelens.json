@@ -14,12 +14,192 @@
   },
   "panels": [
     {
+      "id": 10,
+      "title": "檢索準確度：五題中命中前三名的題數",
+      "type": "bargauge",
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 10,
+        "h": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "expr": "citelens_eval_top3_hits",
+          "legendFormat": "{{config}}",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "max": 5,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#B85042",
+                "value": null
+              },
+              {
+                "color": "#EF9F27",
+                "value": 3
+              },
+              {
+                "color": "#1D7A5F",
+                "value": 5
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "displayMode": "gradient",
+        "orientation": "horizontal",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showUnfilled": true,
+        "minVizHeight": 30
+      }
+    },
+    {
+      "id": 11,
+      "title": "表格解析結果",
+      "type": "bargauge",
+      "gridPos": {
+        "x": 10,
+        "y": 0,
+        "w": 7,
+        "h": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "expr": "citelens_eval_tables",
+          "legendFormat": "{{state}}",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "max": 20,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#1D7A5F",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "displayMode": "basic",
+        "orientation": "horizontal",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      }
+    },
+    {
+      "id": 12,
+      "title": "答案有標註引用的比例",
+      "type": "stat",
+      "gridPos": {
+        "x": 17,
+        "y": 0,
+        "w": 7,
+        "h": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "expr": "sum(citelens_answer_cited_total{cited=\"true\"}) / sum(citelens_answer_cited_total)",
+          "legendFormat": "引用率",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "min": 0,
+          "max": 1,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#B85042",
+                "value": null
+              },
+              {
+                "color": "#EF9F27",
+                "value": 0.6
+              },
+              {
+                "color": "#1D7A5F",
+                "value": 0.9
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "area"
+      }
+    },
+    {
       "id": 1,
       "title": "查詢量（依路由）",
       "type": "timeseries",
       "gridPos": {
         "x": 0,
-        "y": 0,
+        "y": 8,
         "w": 8,
         "h": 7
       },
@@ -51,7 +231,7 @@
       "type": "timeseries",
       "gridPos": {
         "x": 8,
-        "y": 0,
+        "y": 8,
         "w": 8,
         "h": 7
       },
@@ -92,7 +272,7 @@
       "type": "timeseries",
       "gridPos": {
         "x": 16,
-        "y": 0,
+        "y": 8,
         "w": 8,
         "h": 7
       },
@@ -133,7 +313,7 @@
       "type": "timeseries",
       "gridPos": {
         "x": 0,
-        "y": 7,
+        "y": 15,
         "w": 8,
         "h": 7
       },
@@ -188,7 +368,7 @@
       "type": "stat",
       "gridPos": {
         "x": 8,
-        "y": 7,
+        "y": 15,
         "w": 8,
         "h": 7
       },
@@ -220,7 +400,7 @@
       "type": "stat",
       "gridPos": {
         "x": 16,
-        "y": 7,
+        "y": 15,
         "w": 8,
         "h": 7
       },

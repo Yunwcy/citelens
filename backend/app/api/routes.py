@@ -40,6 +40,28 @@ async def _stream(events: AsyncIterator[dict]) -> AsyncIterator[str]:
         yield _sse(e)
 
 
+@router.post("/eval")
+async def publish_eval(report: dict) -> dict:
+    """接收 scripts/eval.py 產生的評估結果並轉成 Prometheus gauge。
+
+    檢索準確度需要事先標註每個查詢的目標章節，無法在每次查詢時即時計算，
+    因此由離線評估產生後發布到這裡，與執行指標呈現在同一張儀表板上。
+    """
+    path = settings.storage_dir / "eval.json"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
+    prom.publish_eval(report)
+    return {"ok": True, "configs": list(report.get("retrieval", {}))}
+
+
+@router.get("/eval")
+async def get_eval() -> dict:
+    path = settings.storage_dir / "eval.json"
+    if not path.exists():
+        raise HTTPException(404, "尚未發布評估結果")
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
 @router.get("/metrics")
 async def metrics() -> Response:
     """Prometheus 抓取端點。與 metrics.jsonl 為同一組數字的不同輸出格式。"""
