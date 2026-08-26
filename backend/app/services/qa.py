@@ -12,6 +12,7 @@ from dataclasses import dataclass, field
 from app.config import settings
 from app.llm import client, prompts
 from app.models import Chunk
+from app.observability import metrics
 from app.retrieval.budget import PackedContext, pack
 from app.retrieval.index import DocumentIndex
 
@@ -60,25 +61,31 @@ async def answer(
     result = await client.generate(prompt, system=system)
 
     sources = _used_sources(result.text, ctx, scores)
-    return Answer(
-        text=result.text,
-        sources=sources,
-        debug={
-            "route": route,
-            "retrieved": len(hits),
-            "packed": len(ctx.blocks),
-            "context_tokens": ctx.used_tokens,
-            "context_budget": ctx.budget,
-            "dropped": ctx.dropped,
-            "truncated": ctx.truncated,
-            "prompt_tokens": result.prompt_tokens,
-            "completion_tokens": result.completion_tokens,
-            "cost_usd": round(result.cost_usd, 6),
-            "retrieval_ms": round(retrieval_ms, 1),
-            "llm_ms": result.latency_ms,
-            "total_ms": round((time.perf_counter() - started) * 1000, 1),
-        },
+    debug = {
+        "route": route,
+        "retrieved": len(hits),
+        "packed": len(ctx.blocks),
+        "context_tokens": ctx.used_tokens,
+        "context_budget": ctx.budget,
+        "dropped": ctx.dropped,
+        "truncated": ctx.truncated,
+        "prompt_tokens": result.prompt_tokens,
+        "completion_tokens": result.completion_tokens,
+        "cost_usd": round(result.cost_usd, 6),
+        "retrieval_ms": round(retrieval_ms, 1),
+        "llm_ms": result.latency_ms,
+        "total_ms": round((time.perf_counter() - started) * 1000, 1),
+    }
+    metrics.record(
+        "query",
+        doc_id=index.doc_id,
+        question=question,
+        model=settings.llm_model,
+        embedding_backend=index.backend,
+        n_sources=len(sources),
+        **debug,
     )
+    return Answer(text=result.text, sources=sources, debug=debug)
 
 
 def _cite_label(c: Chunk) -> str:

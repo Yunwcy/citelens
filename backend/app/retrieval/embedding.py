@@ -34,11 +34,52 @@ class Embedder:
         raise NotImplementedError
 
 
+# 檢索用前綴。e5 與 bge 系列在訓練時就帶著這些前綴，少加會讓分數整體下滑；
+# 兩邊加反了同樣不會報錯。因此不依賴套件的內部行為，在這裡明確指定。
+_PREFIXES: dict[str, tuple[str, str]] = {          # 模型關鍵字 -> (query 前綴, passage 前綴)
+    "e5": ("query: ", "passage: "),
+    "bge-small-zh": ("为这个句子生成表示以用于检索相关文章：", ""),
+}
+
+
+def _prefix_for(model_name: str) -> tuple[str, str]:
+    for key, pair in _PREFIXES.items():
+        if key in model_name:
+            return pair
+    return ("", "")
+
+
+def _register_custom_models() -> None:
+    """fastembed 未收錄 multilingual-e5-small，但官方 repo 提供 ONNX，手動註冊。
+
+    這是本專案在多語言與體積之間最理想的落點：約 470MB、100 種語言、
+    且是為非對稱檢索訓練的模型（與 2019 年的相似度模型有本質差異）。
+    """
+    from fastembed import TextEmbedding
+    from fastembed.common.model_description import ModelSource, PoolingType
+
+    name = "intfloat/multilingual-e5-small"
+    if any(m["model"] == name for m in TextEmbedding.list_supported_models()):
+        return
+    TextEmbedding.add_custom_model(
+        model=name,
+        pooling=PoolingType.MEAN,
+        normalization=True,
+        sources=ModelSource(hf=name),
+        dim=384,
+        model_file="onnx/model.onnx",
+        description="Multilingual (~100 languages), retrieval-trained, 512 input tokens",
+        size_in_gb=0.47,
+    )
+
+
 class FastEmbedBackend(Embedder):
     def __init__(self, model_name: str):
         from fastembed import TextEmbedding
 
+        _register_custom_models()
         self.name = model_name
+        self.query_prefix, self.passage_prefix = _prefix_for(model_name)
         # threads=1：並行工作池在直譯器結束時會於 macOS 觸發
         # recursive_mutex 崩潰，且本專案的並行度由請求層的 semaphore 控制。
         self._model = TextEmbedding(model_name=model_name, threads=1)
@@ -47,11 +88,12 @@ class FastEmbedBackend(Embedder):
         )
 
     def embed_passages(self, texts: list[str]) -> np.ndarray:
-        # passage_embed 會依模型自動套用正確前綴（e5 需要，MiniLM 不需要）
-        return _normalize(np.array(list(self._model.passage_embed(texts)), dtype=np.float32))
+        batch = [self.passage_prefix + t for t in texts]
+        return _normalize(np.array(list(self._model.embed(batch)), dtype=np.float32))
 
     def embed_query(self, text: str) -> np.ndarray:
-        return _normalize(np.array(list(self._model.query_embed([text])), dtype=np.float32))[0]
+        vec = list(self._model.embed([self.query_prefix + text]))
+        return _normalize(np.array(vec, dtype=np.float32))[0]
 
 
 class OpenAIBackend(Embedder):
@@ -87,6 +129,10 @@ def get_embedder(backend: str | None = None) -> Embedder:
     backend = backend or settings.embedding_backend
     if backend == "onnx":
         embedder = FastEmbedBackend(settings.embedding_model_onnx)
+    elif backend == "e5-small":
+        embedder = FastEmbedBackend("intfloat/multilingual-e5-small")
+    elif backend == "bge-zh":
+        embedder = FastEmbedBackend("BAAI/bge-small-zh-v1.5")
     elif backend == "zh":
         embedder = FastEmbedBackend(settings.embedding_model_zh)
     elif backend == "onnx-large":

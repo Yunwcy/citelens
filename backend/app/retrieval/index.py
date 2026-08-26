@@ -18,6 +18,7 @@ from app.models import Chunk, Table
 from app.retrieval.bm25 import Bm25Index
 from app.retrieval.embedding import get_embedder
 from app.retrieval.hybrid import Hit, rrf
+from app.observability import metrics
 from app.retrieval.vector import VectorIndex
 from app.services.ingest import IngestResult
 
@@ -28,6 +29,9 @@ class DocumentIndex:
     def __init__(self, doc_id: str, chunks: list[Chunk], vectors: np.ndarray,
                  tables: list[Table], meta: dict):
         self.doc_id = doc_id
+        # 索引必須記住是哪個後端建的。查詢時若改用預設後端，兩邊的向量空間
+        # 不同，結果會是錯的 —— 維度剛好相同時甚至不會報錯，只會靜默地爛掉。
+        self.backend = meta.get("embedding_backend")
         self.chunks = chunks
         self.tables = {t.table_id: t for t in tables}
         self.meta = meta
@@ -51,12 +55,31 @@ class DocumentIndex:
             "profile": asdict(res.profile),
             "n_chunks": len(res.chunks),
             "n_tables": len(res.tables),
+            "embedding_backend": backend or settings.embedding_backend,
             "embedding_model": embedder.name,
             "embedding_dim": embedder.dim,
             "index_seconds": round(elapsed, 2),
             "chunks_per_second": round(len(res.chunks) / max(elapsed, 1e-6), 1),
         }
         log.info("索引完成 %s：%d 片段，%.1fs", doc_id, len(res.chunks), elapsed)
+        metrics.record(
+            "index",
+            doc_id=doc_id,
+            pages=res.profile.n_pages,
+            columns=res.profile.columns,
+            section_source=res.profile.section_source,
+            sections=len(res.sections),
+            chunks=len(res.chunks),
+            text_chunks=len(res.text_chunks),
+            table_chunks=len(res.table_chunks),
+            tables=len(res.tables),
+            tables_validated=sum(1 for t in res.tables if t.validated),
+            embedding_backend=meta["embedding_backend"],
+            embedding_model=embedder.name,
+            index_seconds=meta["index_seconds"],
+            chunks_per_second=meta["chunks_per_second"],
+            api_calls=0 if backend != "openai" else len(res.chunks),
+        )
         return cls(doc_id, res.chunks, vectors, res.tables, meta)
 
     @property
@@ -94,7 +117,7 @@ class DocumentIndex:
         mode = mode or settings.retrieval_mode
         pool = max(top_k * 3, 20)          # 融合前各取較多候選，讓名次有意義
 
-        qv = get_embedder().embed_query(query)
+        qv = get_embedder(self.backend).embed_query(query)
         rankings = {"vector": self.vector.search(qv, pool)}
         if mode == "hybrid":
             rankings["bm25"] = self.bm25.search(query, pool)
