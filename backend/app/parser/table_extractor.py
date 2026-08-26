@@ -188,13 +188,16 @@ def _as_prose(table: Table, note: str, ok: bool = True) -> Table:
 
 
 def _grid(page, x0: float, y0: float, x1: float, y1: float) -> list[dict]:
-    """把區域內的字元還原成列與儲存格，保留每個儲存格的 x 範圍。"""
+    """把區域內的字元還原成列與儲存格，保留每個儲存格的 x 範圍。
+
+    """
     words = [
         w for w in page.get_text("words")
         if w[1] >= y0 - 1 and w[3] <= y1 + 1 and w[0] >= x0 - 2 and w[2] <= x1 + 2
     ]
     if not words:
         return []
+
 
     buckets: dict[float, list] = {}
     for w in sorted(words, key=lambda w: (w[1], w[0])):

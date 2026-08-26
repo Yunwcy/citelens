@@ -36,14 +36,17 @@ async def build(doc_id: str, sections: list[Section]) -> dict:
     if path.exists():
         return json.loads(path.read_text(encoding="utf-8"))
 
+    if not sections:
+        raise ValueError(f"{doc_id} 沒有章節資料，無法建立摘要")
+
     started = time.perf_counter()
     groups = _group_by_top_level(sections)
     log.info("摘要 %s：%d 個一級章節", doc_id, len(groups))
 
-    results = await asyncio.gather(*(_map_one(title, text) for title, text in groups))
+    results = await asyncio.gather(*(_map_one(g[0], g[1]) for g in groups))
     section_summaries = [
-        {"section": title, "summary": summary}
-        for (title, _), summary in zip(groups, results)
+        {"section": g[0], "page": g[2], "summary": summary}
+        for g, summary in zip(groups, results)
     ]
 
     joined = "\n\n".join(f"## {s['section']}\n{s['summary']}" for s in section_summaries)
@@ -69,29 +72,29 @@ async def build(doc_id: str, sections: list[Section]) -> dict:
     return data
 
 
-def _group_by_top_level(sections: list[Section]) -> list[tuple[str, str]]:
+def _group_by_top_level(sections: list[Section]) -> list[tuple[str, str, int]]:
     """把子章節併入其一級章節，避免為每個小節各發一次呼叫。
 
     26 個章節逐一摘要要 27 次往返；併為一級後約 7 次，品質幾乎無差異，
     因為子章節的內容本來就會被一併讀到。
     """
-    groups: list[tuple[str, list[str]]] = []
+    groups: list[tuple[str, list[str], int]] = []
     for sec in sections:
         text = sec.text.strip()
         if not text:
             continue
         if sec.level <= 1 or not groups:
-            groups.append((sec.title, [f"### {sec.title}\n{text}"]))
+            groups.append((sec.title, [f"### {sec.title}\n{text}"], sec.page_start))
         else:
             groups[-1][1].append(f"### {sec.title}\n{text}")
 
-    out = []
-    for title, parts in groups:
+    out: list[tuple[str, str, int]] = []
+    for title, parts, page in groups:
         body = "\n\n".join(parts)
         if tokens.count(body) < _MIN_SECTION_TOKENS and out:
-            out[-1] = (out[-1][0], out[-1][1] + "\n\n" + body)
+            out[-1] = (out[-1][0], out[-1][1] + "\n\n" + body, out[-1][2])
         else:
-            out.append((title, body))
+            out.append((title, body, page))
     return out
 
 

@@ -174,6 +174,13 @@ async def _summary(index: DocumentIndex, question: str, r, started: float) -> An
     if data is None:
         data = await hierarchical.build(index.doc_id, index.sections)
 
+    # 摘要沒有可指的片段，但仍應說明涵蓋範圍 ——
+    # 「答案附出處」對摘要而言就是「這份摘要讀過哪些章節」。
+    sources = [
+        Source(n=i + 1, page=s.get("page", 0), section=s["section"], kind="summary",
+               chunk_id=f"sum-{i:02d}", score=0.0, text=s["summary"][:600])
+        for i, s in enumerate(data.get("section_summaries", []))
+    ]
     debug = {
         "route": "summary",
         "route_reason": r.reason,
@@ -189,8 +196,8 @@ async def _summary(index: DocumentIndex, question: str, r, started: float) -> An
     }
     metrics.record("query", doc_id=index.doc_id, question=question,
                    model=settings.llm_model, embedding_backend=index.backend,
-                   n_sources=0, **debug)
-    return Answer(text=data["summary"], sources=[], debug=debug)
+                   n_sources=len(sources), **debug)
+    return Answer(text=data["summary"], sources=sources, debug=debug)
 
 
 def _cite_label(c: Chunk) -> str:
@@ -241,7 +248,7 @@ async def answer_stream(
     if r.name == "summary":
         res = await _summary(index, question, r, started)
         yield {"type": "token", "text": res.text}
-        yield {"type": "done", "sources": [], "debug": res.debug}
+        yield {"type": "done", "sources": [asdict(s) for s in res.sources], "debug": res.debug}
         return
 
     yield {"type": "stage", "stage": "retrieving"}

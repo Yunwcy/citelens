@@ -22,11 +22,14 @@ export function SourcePanel({ sources }: { sources: Source[] }) {
           >
             <div className="flex items-baseline justify-between gap-2">
               <span className="text-accent font-medium">[{s.n}]</span>
-              <span className="text-xs text-ink-faint">{s.score.toFixed(4)}</span>
+              <span className="text-xs text-ink-faint">
+                {s.kind === "summary" ? "章節摘要" : s.score.toFixed(4)}
+              </span>
             </div>
             <div className="mt-0.5">
               第 {s.page} 頁
-              {s.kind !== "text" && <span className="text-ink-soft"> · 表格</span>}
+              {s.kind === "table_row" || s.kind === "table_full"
+                ? <span className="text-ink-soft"> · 表格</span> : null}
             </div>
             {s.section && <div className="text-xs text-ink-soft mt-0.5">{s.section}</div>}
           </button>

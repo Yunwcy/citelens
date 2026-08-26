@@ -14,7 +14,7 @@ from pathlib import Path
 import numpy as np
 
 from app.config import settings
-from app.models import Chunk, Table
+from app.models import Block, Chunk, Section, Table
 from app.retrieval.bm25 import Bm25Index
 from app.retrieval.embedding import get_embedder
 from app.retrieval.hybrid import Hit, rrf
@@ -27,12 +27,14 @@ log = logging.getLogger(__name__)
 
 class DocumentIndex:
     def __init__(self, doc_id: str, chunks: list[Chunk], vectors: np.ndarray,
-                 tables: list[Table], meta: dict):
+                 tables: list[Table], meta: dict, sections: list[Section] | None = None):
         self.doc_id = doc_id
         # 索引必須記住是哪個後端建的。查詢時若改用預設後端，兩邊的向量空間
         # 不同，結果會是錯的 —— 維度剛好相同時甚至不會報錯，只會靜默地爛掉。
         self.backend = meta.get("embedding_backend")
-        self.sections = []      # 由 build() 填入，供摘要使用；載入既有索引時為空
+        # 章節必須持久化：伺服器重啟後從磁碟載入索引時，若章節為空，
+        # 摘要重建會拿到空清單而靜默產出空摘要。
+        self.sections = sections or []
         self.chunks = chunks
         self.tables = {t.table_id: t for t in tables}
         self.meta = meta
@@ -81,9 +83,7 @@ class DocumentIndex:
             chunks_per_second=meta["chunks_per_second"],
             api_calls=0 if backend != "openai" else len(res.chunks),
         )
-        idx = cls(doc_id, res.chunks, vectors, res.tables, meta)
-        idx.sections = res.sections
-        return idx
+        return cls(doc_id, res.chunks, vectors, res.tables, meta, res.sections)
 
     @property
     def dir(self) -> Path:
@@ -98,6 +98,9 @@ class DocumentIndex:
             json.dumps([asdict(t) for t in self.tables.values()], ensure_ascii=False),
             encoding="utf-8",
         )
+        (self.dir / "sections.json").write_text(
+            json.dumps([asdict(s) for s in self.sections], ensure_ascii=False), encoding="utf-8"
+        )
         (self.dir / "meta.json").write_text(
             json.dumps(self.meta, ensure_ascii=False, indent=2), encoding="utf-8"
         )
@@ -110,7 +113,15 @@ class DocumentIndex:
         tables = [Table(**t) for t in json.loads((d / "tables.json").read_text(encoding="utf-8"))]
         meta = json.loads((d / "meta.json").read_text(encoding="utf-8"))
         vectors = np.load(d / "vectors.npy")
-        return cls(doc_id, chunks, vectors, tables, meta)
+
+        sections: list[Section] = []
+        sec_path = d / "sections.json"
+        if sec_path.exists():
+            for raw in json.loads(sec_path.read_text(encoding="utf-8")):
+                blocks = [Block(**b) for b in raw.pop("blocks", [])]
+                sections.append(Section(**raw, blocks=blocks))
+
+        return cls(doc_id, chunks, vectors, tables, meta, sections)
 
     # --- 檢索 -------------------------------------------------------------
 
