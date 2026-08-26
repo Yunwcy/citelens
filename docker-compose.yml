@@ -37,6 +37,14 @@ services:
       GF_AUTH_ANONYMOUS_ENABLED: "true"
       GF_AUTH_ANONYMOUS_ORG_ROLE: Admin
       GF_AUTH_DISABLE_LOGIN_FORM: "true"
+      # 開啟 localhost:3001 直接進入儀表板，不必先繞過 Grafana 的預設首頁
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /etc/grafana/provisioning/dashboards/citelens.json
+      # 關掉新手引導與新聞面板，畫面上只留本專案的指標
+      # 淺色主題：簡報底色為淺色，深色截圖貼上去會很突兀
+      GF_USERS_DEFAULT_THEME: light
+      GF_NEWS_NEWS_FEED_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
     volumes:
       - ./ops/grafana/provisioning:/etc/grafana/provisioning:ro
     ports:

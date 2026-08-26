@@ -2,6 +2,7 @@ apiVersion: 1
 datasources:
   - name: Prometheus
     type: prometheus
+    uid: prometheus          # 儀表板直接以此 uid 參照；未指定時 Grafana 會隨機產生
     access: proxy
     url: http://prometheus:9090
     isDefault: true
