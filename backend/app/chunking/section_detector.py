@@ -131,7 +131,7 @@ def _assign_blocks(pdf: ParsedPdf, sections: list[Section]) -> None:
         while i + 1 < len(sections) and b.order >= sections[i + 1].start_order:
             i += 1
         if b.order >= sections[i].start_order:
-            sections[i].blocks.append((b.page, b.text))
+            sections[i].blocks.append(b)
 
 
 def _running_headers(blocks: list[Block], n_pages: int, ratio: float = 0.3) -> set[str]:

@@ -63,21 +63,21 @@ class DocumentProfile:
 
 @dataclass(slots=True)
 class Section:
-    """章節。blocks 保留頁碼，讓切塊後仍能標出正確頁次。"""
+    """章節。保留完整的 Block 而非純文字，讓表格區域能依座標排除。"""
     id: str
     title: str
     level: int
     start_order: float
     end_order: float
-    blocks: list[tuple[int, str]] = field(default_factory=list)   # (page, text)
+    blocks: list[Block] = field(default_factory=list)
 
     @property
     def text(self) -> str:
-        return "\n".join(t for _, t in self.blocks)
+        return "\n".join(b.text for b in self.blocks)
 
     @property
     def page_start(self) -> int:
-        return self.blocks[0][0] if self.blocks else 0
+        return self.blocks[0].page if self.blocks else 0
 
 
 @dataclass(slots=True)
@@ -91,3 +91,34 @@ class Chunk:
     kind: Literal["text", "table_row", "table_full"] = "text"
     n_tokens: int = 0
     meta: dict = field(default_factory=dict)
+
+
+@dataclass(slots=True)
+class Table:
+    """抽取出的表格。
+
+    同時保留三種表徵：
+    - cells：確定性查表用（零幻覺）
+    - rows ：逐列線性化成自然語言，供檢索命中
+    - markdown：整表原文，供比較類問題閱讀
+    """
+    table_id: str
+    page: int
+    caption: str
+    y0: float
+    y1: float
+    strategy: str                                    # lattice | booktabs
+    kind: str = "data"                               # data | prose
+    header_levels: list[list[str]] = field(default_factory=list)
+    columns: list[str] = field(default_factory=list)      # 不含列標題欄
+    rows: list[tuple[str, dict[str, str]]] = field(default_factory=list)
+    markdown: str = ""
+    validated: bool = False
+    validation_note: str = ""
+
+    @property
+    def cells(self) -> dict[str, str]:
+        return {f"{label}|{col}": val for label, vals in self.rows for col, val in vals.items()}
+
+    def cell(self, row_label: str, column: str) -> str | None:
+        return self.cells.get(f"{row_label}|{column}")

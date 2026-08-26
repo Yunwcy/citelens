@@ -11,9 +11,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "backend"))
 
-from app.chunking import section_chunker, section_detector  # noqa: E402
-from app.parser import profiler  # noqa: E402
-from app.parser.pdf_parser import ParsedPdf  # noqa: E402
+from app.services.ingest import ingest  # noqa: E402
 
 
 def main() -> None:
@@ -23,12 +21,10 @@ def main() -> None:
     ap.add_argument("--strategy", default=None, choices=["section", "fixed"])
     args = ap.parse_args()
 
-    with ParsedPdf(args.pdf) as pdf:
-        prof = profiler.profile(pdf)
-        sections, source = section_detector.detect(pdf, prof)
-        prof.section_source = source
-        chunks = section_chunker.chunk_sections(sections, args.strategy)
-
+    res = ingest(args.pdf, args.strategy)
+    prof, sections, chunks, tables = res.profile, res.sections, res.chunks, res.tables
+    source = prof.section_source
+    if True:
         print(f"檔案          {Path(args.pdf).name}")
         print(f"特徵          {prof.summary()}")
         print(f"章節來源      {source}（級聯第 "
@@ -37,10 +33,16 @@ def main() -> None:
         print(f"章節數        {len(sections)}")
 
         if chunks:
-            ns = [c.n_tokens for c in chunks]
-            over = sum(1 for n in ns if n > 512)
-            print(f"片段數        {len(chunks)}")
-            print(f"片段 token    平均 {sum(ns)//len(ns)} · 最大 {max(ns)} · 超過 512 的有 {over} 個")
+            ns = [c.n_tokens for c in res.text_chunks]
+            print(f"片段數        文字 {len(res.text_chunks)} · 表格 {len(res.table_chunks)}")
+            print(f"文字片段      平均 {sum(ns)//len(ns)} · 最大 {max(ns)} tokens")
+
+        ok = sum(1 for t in tables if t.validated)
+        print(f"表格          {len(tables)} 張，驗證通過 {ok}")
+        for t in tables:
+            mark = "✓" if t.validated else "✗"
+            print(f"  {mark} {t.table_id} p{t.page:<3d} {t.kind:5s} {len(t.rows):2d}列 "
+                  f"{(t.caption or '(無標號)')[:46]}")
 
         if args.tree:
             print("\n章節樹")

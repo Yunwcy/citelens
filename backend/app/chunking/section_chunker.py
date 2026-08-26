@@ -11,24 +11,33 @@ from __future__ import annotations
 import re
 
 from app.config import settings
-from app.models import Chunk, Section
+from typing import Callable
+
+from app.models import Block, Chunk, Section
 from app.util import tokens
 
 # 遞迴切分的分隔符，由粗到細
 _SEPARATORS = ["\n\n", "\n", "。", "！", "？", ". ", "; ", "，", " "]
 
 
-def chunk_sections(sections: list[Section], strategy: str | None = None) -> list[Chunk]:
+def chunk_sections(
+    sections: list[Section],
+    strategy: str | None = None,
+    exclude: Callable[[Block], bool] | None = None,
+) -> list[Chunk]:
+    """exclude 用來排除已被表格抽取器接手的區塊，避免同一份內容重複入索引。"""
     strategy = strategy or settings.chunk_strategy
+    keep = (lambda b: not exclude(b)) if exclude else (lambda b: True)
     if strategy == "fixed":
-        return _fixed(sections)
-    return _section_aware(sections)
+        return _fixed(sections, keep)
+    return _section_aware(sections, keep)
 
 
-def _section_aware(sections: list[Section]) -> list[Chunk]:
+def _section_aware(sections: list[Section], keep) -> list[Chunk]:
     out: list[Chunk] = []
     for sec in sections:
-        for page, piece in _split_blocks(sec.blocks):
+        blocks = [(b.page, b.text) for b in sec.blocks if keep(b)]
+        for page, piece in _split_blocks(blocks):
             out.append(
                 Chunk(
                     chunk_id=f"{sec.id}-{len([c for c in out if c.section_id == sec.id]):02d}",
@@ -42,9 +51,9 @@ def _section_aware(sections: list[Section]) -> list[Chunk]:
     return out
 
 
-def _fixed(sections: list[Section]) -> list[Chunk]:
+def _fixed(sections: list[Section], keep) -> list[Chunk]:
     """對照組：把全文攤平成一條，純以長度切，不看任何結構。"""
-    flat = [(p, t) for sec in sections for p, t in sec.blocks]
+    flat = [(b.page, b.text) for sec in sections for b in sec.blocks if keep(b)]
     return [
         Chunk(
             chunk_id=f"f{i:04d}",
