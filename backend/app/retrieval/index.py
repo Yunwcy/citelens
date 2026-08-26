@@ -45,7 +45,7 @@ class DocumentIndex:
 
     @classmethod
     def build(cls, doc_id: str, res: IngestResult, backend: str | None = None) -> "DocumentIndex":
-        embedder = get_embedder(backend)
+        embedder = get_embedder(backend, purpose="index")
         started = time.perf_counter()
         vectors = embedder.embed_passages([c.text for c in res.chunks])
         elapsed = time.perf_counter() - started

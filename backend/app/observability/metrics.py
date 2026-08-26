@@ -17,6 +17,7 @@ from pathlib import Path
 from typing import Any
 
 from app.config import settings
+from app.observability import prom
 
 log = logging.getLogger(__name__)
 _lock = threading.Lock()
@@ -34,6 +35,11 @@ def record(event: str, **fields: Any) -> None:
         "event": event,
         **fields,
     }
+    try:
+        prom.observe(event, fields)
+    except Exception:                                    # noqa: BLE001
+        log.warning("Prometheus 指標更新失敗", exc_info=True)
+
     try:
         line = json.dumps(row, ensure_ascii=False)
         with _lock, _path().open("a", encoding="utf-8") as f:

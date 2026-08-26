@@ -1,0 +1,48 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    environment:
+      OPENAI_API_KEY: ${OPENAI_API_KEY:?請先在 .env 設定 OPENAI_API_KEY}
+      EMBEDDING_BACKEND: ${EMBEDDING_BACKEND:-onnx}
+      CHUNK_STRATEGY: ${CHUNK_STRATEGY:-section}
+      RETRIEVAL_MODE: ${RETRIEVAL_MODE:-hybrid}
+    volumes:
+      - storage:/data
+    ports:
+      - "8000:8000"
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    depends_on:
+      - backend
+    ports:
+      - "3000:80"
+
+  prometheus:
+    image: prom/prometheus:v3.1.0
+    volumes:
+      - ./ops/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      - "9090:9090"
+    depends_on:
+      - backend
+
+  grafana:
+    image: grafana/grafana:11.5.1
+    environment:
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Admin
+      GF_AUTH_DISABLE_LOGIN_FORM: "true"
+    volumes:
+      - ./ops/grafana/provisioning:/etc/grafana/provisioning:ro
+    ports:
+      - "3001:3000"
+    depends_on:
+      - prometheus
+
+volumes:
+  storage:

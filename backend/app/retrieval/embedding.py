@@ -82,7 +82,10 @@ class FastEmbedBackend(Embedder):
         self.query_prefix, self.passage_prefix = _prefix_for(model_name)
         # threads=1：並行工作池在直譯器結束時會於 macOS 觸發
         # recursive_mutex 崩潰，且本專案的並行度由請求層的 semaphore 控制。
-        self._model = TextEmbedding(model_name=model_name, threads=1)
+        self._model = TextEmbedding(
+            model_name=model_name, threads=1,
+            **({"cache_dir": str(settings.model_cache_dir)} if settings.model_cache_dir else {}),
+        )
         self.dim = next(
             m["dim"] for m in TextEmbedding.list_supported_models() if m["model"] == model_name
         )
@@ -124,8 +127,15 @@ def _normalize(v: np.ndarray) -> np.ndarray:
     return v / np.maximum(norms, 1e-12)
 
 
-@lru_cache(maxsize=3)
-def get_embedder(backend: str | None = None) -> Embedder:
+@lru_cache(maxsize=8)
+def get_embedder(backend: str | None = None, purpose: str = "query") -> Embedder:
+    """purpose 決定使用哪一個推論工作階段。
+
+    索引與查詢必須用各自獨立的工作階段：ONNX 的單一 session 在內部是序列化的，
+    共用時查詢的單句向量化會排在整批 90 個片段之後。實測併發上傳會讓檢索
+    中位數由 44 ms 升到 733 ms —— 兩組 semaphore 隔離的是排程，
+    但沒有隔離推論資源本身。
+    """
     backend = backend or settings.embedding_backend
     if backend == "onnx":
         embedder = FastEmbedBackend(settings.embedding_model_onnx)

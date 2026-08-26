@@ -1,0 +1,22 @@
+# 與 .github/workflows/ci.yml 等價。實際執行的是 GitHub Actions，
+# 此檔提供在 GitLab 上的對應設定，兩者差異僅在語法。
+stages: [test]
+
+pytest:
+  stage: test
+  image: python:3.12-slim
+  before_script:
+    - apt-get update && apt-get install -y --no-install-recommends libgomp1 curl
+    - pip install -r backend/requirements.txt
+    - bash scripts/fetch_test_docs.sh
+  script:
+    - cd backend && python -m pytest tests -q
+    - cd .. && python scripts/eval.py --md docs/results/retrieval.md
+  artifacts:
+    paths: [docs/results/]
+
+frontend:
+  stage: test
+  image: node:22-alpine
+  script:
+    - cd frontend && npm ci && npx tsc --noEmit && npm run build

@@ -1,0 +1,53 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+
+      - name: 安裝相依
+        run: pip install -r backend/requirements.txt
+
+      - name: 下載測試文件
+        run: bash scripts/fetch_test_docs.sh
+
+      - name: 執行測試
+        run: python -m pytest tests -q
+        working-directory: backend
+
+      - name: 產出評估數據
+        run: python scripts/eval.py --md docs/results/retrieval.md
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: results
+          path: docs/results/
+
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+        working-directory: frontend
+      - name: 型別檢查
+        run: npx tsc --noEmit
+        working-directory: frontend
+      - name: 建置
+        run: npm run build
+        working-directory: frontend

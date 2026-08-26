@@ -65,6 +65,9 @@ class Settings(BaseSettings):
 
     # --- 儲存 -------------------------------------------------------------
     storage_dir: Path = Path("./storage")
+    # 向量化模型的存放位置。容器內指向映像中預先下載好的路徑；
+    # 預設的 /tmp 在部分執行環境會被清空，導致每次啟動重新下載 240MB。
+    model_cache_dir: Path | None = None
 
     @property
     def retrieval_budget(self) -> int:

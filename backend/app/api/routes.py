@@ -10,10 +10,11 @@ from dataclasses import asdict
 from typing import AsyncIterator
 
 from fastapi import APIRouter, File, HTTPException, UploadFile
-from fastapi.responses import StreamingResponse
+from fastapi.responses import Response, StreamingResponse
 from pydantic import BaseModel, Field
 
 from app.config import settings
+from app.observability import prom
 from app.services import documents, qa
 from app.summarization import hierarchical
 
@@ -33,6 +34,12 @@ def _sse(payload: dict) -> str:
 async def _stream(events: AsyncIterator[dict]) -> AsyncIterator[str]:
     async for e in events:
         yield _sse(e)
+
+
+@router.get("/metrics")
+async def metrics() -> Response:
+    """Prometheus 抓取端點。與 metrics.jsonl 為同一組數字的不同輸出格式。"""
+    return Response(prom.render(), media_type="text/plain; version=0.0.4")
 
 
 # --- 文件 -------------------------------------------------------------------
