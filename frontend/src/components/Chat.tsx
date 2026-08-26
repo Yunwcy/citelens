@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { Debug, Source } from "../api";
+import { Markdown } from "./Markdown";
 
 export type Turn = {
   question: string;
@@ -64,8 +65,8 @@ export function Chat({ turns, quickQuestions, ready, busy, onAsk, onCite }: Prop
             )}
 
             {t.answer && (
-              <div className="max-w-[92%] whitespace-pre-wrap leading-relaxed">
-                <Cited text={t.answer} onCite={onCite} />
+              <div className="max-w-[92%] leading-relaxed">
+                <Markdown text={t.answer} onCite={onCite} />
               </div>
             )}
 
@@ -113,28 +114,6 @@ export function Chat({ turns, quickQuestions, ready, busy, onAsk, onCite }: Prop
         </div>
       </div>
     </section>
-  );
-}
-
-/** 把答案中的 [1]、[2] 變成可點擊的引用標記。 */
-function Cited({ text, onCite }: { text: string; onCite: (n: number) => void }) {
-  const parts = text.split(/(\[\d+\])/g);
-  return (
-    <>
-      {parts.map((p, i) => {
-        const m = p.match(/^\[(\d+)\]$/);
-        if (!m) return <span key={i}>{p}</span>;
-        return (
-          <button
-            key={i}
-            onClick={() => onCite(Number(m[1]))}
-            className="text-accent hover:underline align-baseline"
-          >
-            {p}
-          </button>
-        );
-      })}
-    </>
   );
 }
 
