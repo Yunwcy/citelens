@@ -25,6 +25,42 @@ from app.services.ingest import IngestResult
 log = logging.getLogger(__name__)
 
 
+_MAX_ROWS_PER_TABLE = 2
+
+
+def _embed_text(chunk: Chunk) -> str:
+    """向量化時把章節標題併入內容。
+
+    片段本身不含標題時，向量只反映段落文字，模型無從得知它屬於哪一節。
+    問「雙層檢索是什麼意思」這種以章節主題發問的問題，
+    正確段落因此排不上前面 —— 尤其中文查詢，BM25 對英文文件完全無法貢獻，
+    等於只靠向量一半的力量。
+    """
+    return f"{chunk.section_title}\n{chunk.text}" if chunk.section_title else chunk.text
+
+
+def _cap_per_table(hits: list[Hit], chunks: list[Chunk]) -> list[Hit]:
+    """同一張表最多保留兩列。
+
+    一張 16 列的表格會產生 16 個片段，語意相近，命中時容易連續佔滿前十名，
+    把其他章節整個擠掉 —— 實測「圖索引是怎麼建立的」這類問題，
+    正確章節因此由第 1 名掉到第 5 名。
+
+    這麼做不會損失資訊：脈絡組裝階段本來就會在命中任一列時把整張表帶入，
+    保留兩列已足以觸發，其餘名額留給不同章節的內容。
+    """
+    seen: dict[str, int] = {}
+    out: list[Hit] = []
+    for h in hits:
+        tid = chunks[h.index].meta.get("table_id")
+        if chunks[h.index].kind == "table_row" and tid:
+            seen[tid] = seen.get(tid, 0) + 1
+            if seen[tid] > _MAX_ROWS_PER_TABLE:
+                continue
+        out.append(h)
+    return out
+
+
 class DocumentIndex:
     def __init__(self, doc_id: str, chunks: list[Chunk], vectors: np.ndarray,
                  tables: list[Table], meta: dict, sections: list[Section] | None = None):
@@ -39,7 +75,7 @@ class DocumentIndex:
         self.tables = {t.table_id: t for t in tables}
         self.meta = meta
         self.vector = VectorIndex(vectors)
-        self.bm25 = Bm25Index([c.text for c in chunks])
+        self.bm25 = Bm25Index([_embed_text(c) for c in chunks])
 
     # --- 建立與持久化 -----------------------------------------------------
 
@@ -47,7 +83,7 @@ class DocumentIndex:
     def build(cls, doc_id: str, res: IngestResult, backend: str | None = None) -> "DocumentIndex":
         embedder = get_embedder(backend, purpose="index")
         started = time.perf_counter()
-        vectors = embedder.embed_passages([c.text for c in res.chunks])
+        vectors = embedder.embed_passages([_embed_text(c) for c in res.chunks])
         elapsed = time.perf_counter() - started
         # 建索引後再預熱查詢通道：實測 passage 與 query 各有獨立的初始化成本，
         # 不在這裡付掉，就會由使用者的第一次查詢承擔約一秒的延遲。
@@ -136,7 +172,7 @@ class DocumentIndex:
         if mode == "hybrid":
             rankings["bm25"] = self.bm25.search(query, pool)
 
-        return rrf(rankings)[:top_k]
+        return _cap_per_table(rrf(rankings), self.chunks)[:top_k]
 
     def chunk(self, index: int) -> Chunk:
         return self.chunks[index]

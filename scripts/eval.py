@@ -38,18 +38,28 @@ class Case:
     note: str = ""
 
 
+# 測試集刻意涵蓋七個不同章節、中英文各半 ——
+# 只用三五題時，準確度不論高低都缺乏說服力。
 CASES = [
     Case("summary this document", ("Introduction", "Evaluation", "Conclusion"), "全篇覆蓋"),
-    Case("compare lightRAG with GraphRAG", ("Comparison", "Cost"), "需跨章節"),
+    Case("compare lightRAG with GraphRAG", ("Comparison", "Cost"), "指定問題二"),
     Case("Performance of ablated versions of LightRAG", ("Ablation",), "指定問題三"),
     Case("消融實驗的結果如何？", ("Ablation",), "跨語言"),
     Case("LightRAG 和 GraphRAG 有什麼差別", ("Comparison", "Cost"), "跨語言"),
+    Case("How does LightRAG build its graph index?", ("Graph-based",), "架構"),
+    Case("圖索引是怎麼建立的？", ("Graph-based",), "跨語言 · 架構"),
+    Case("What is the dual-level retrieval paradigm?", ("Dual-level",), "架構"),
+    Case("雙層檢索是什麼意思？", ("Dual-level",), "跨語言 · 架構"),
+    Case("What datasets were used in the experiments?", ("Experimental Settings",), "實驗設定"),
+    Case("這篇論文用了哪些資料集？", ("Experimental Settings",), "跨語言 · 實驗設定"),
+    Case("How many tokens does GraphRAG need compared to LightRAG?", ("Cost",), "成本"),
 ]
 
+# 名稱前綴用於排序：Grafana 依序列名稱排列，沒有前綴時順序是隨機的
 CONFIGS = [
-    ("baseline", dict(strategy="fixed", mode="vector", use_tables=False)),
-    ("+結構", dict(strategy="section", mode="vector", use_tables=False)),
-    ("improved", dict(strategy="section", mode="hybrid", use_tables=True)),
+    ("1 基準版", dict(strategy="fixed", mode="vector", use_tables=False)),
+    ("2 加結構感知", dict(strategy="section", mode="vector", use_tables=False)),
+    ("3 完整系統", dict(strategy="section", mode="hybrid", use_tables=True)),
 ]
 
 

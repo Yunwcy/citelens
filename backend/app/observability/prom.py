@@ -35,8 +35,13 @@ CITED = Counter(
 
 # --- 離線評估結果（由 scripts/eval.py 發布）---------------------------------
 EVAL_TOP3 = Gauge(
-    "citelens_eval_top3_hits", "五個查詢中目標章節進入前三名的題數", ["config"],
-    registry=REGISTRY,
+    "citelens_eval_top3_rate", "目標章節進入前三名的比例", ["config"], registry=REGISTRY,
+)
+EVAL_TOP3_COUNT = Gauge(
+    "citelens_eval_top3_hits", "目標章節進入前三名的題數", ["config"], registry=REGISTRY,
+)
+EVAL_TOTAL = Gauge(
+    "citelens_eval_total_queries", "評估用的查詢總數", registry=REGISTRY,
 )
 EVAL_RANK = Gauge(
     "citelens_eval_rank", "目標章節的名次（11 表示未進前十）", ["config", "query"],
@@ -108,9 +113,16 @@ def publish_eval(report: dict) -> None:
     檢索準確度是離線評估出來的，不是每次查詢都能算 —— 因為需要事先標好
     每個查詢的目標章節。因此由 scripts/eval.py 產生後發布到這裡。
     """
+    # 先清空：設定名稱若有變動，舊的標籤組合會留在 gauge 上，
+    # 儀表板會同時顯示新舊兩套數字。
+    for gauge in (EVAL_TOP3, EVAL_TOP3_COUNT, EVAL_RANK, EVAL_TABLES):
+        gauge.clear()
+
     for cfg, rows in report.get("retrieval", {}).items():
         hits = sum(1 for r in rows.values() if r.get("rank") and r["rank"] <= 3)
-        EVAL_TOP3.labels(config=cfg).set(hits)
+        EVAL_TOP3_COUNT.labels(config=cfg).set(hits)
+        EVAL_TOP3.labels(config=cfg).set(hits / len(rows) if rows else 0)
+        EVAL_TOTAL.set(len(rows))
         for query, r in rows.items():
             EVAL_RANK.labels(config=cfg, query=query[:60]).set(r.get("rank") or 11)
 

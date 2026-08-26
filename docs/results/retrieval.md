@@ -6,19 +6,26 @@
 
 文件：`2410.05779.pdf` · 每組取前 10 名 · 數字為目標章節的名次（越小越好）
 
-| 查詢 | 期望章節 | baseline | +結構 | improved |
+| 查詢 | 期望章節 | 1 基準版 | 2 加結構感知 | 3 完整系統 |
 |---|---|---|---|---|
-| summary this document | Introduction / Evaluation / Conclusion | ✗ 未進前 10（涵蓋 0/3） | 2（涵蓋 1/3） | 2（涵蓋 1/3） |
-| compare lightRAG with GraphRAG | Comparison / Cost | ✗ 未進前 10（涵蓋 0/2） | 1（涵蓋 2/2） | 1（涵蓋 2/2） |
+| summary this document | Introduction / Evaluation / Conclusion | ✗ 未進前 10（涵蓋 0/3） | △ 4（涵蓋 3/3） | 1（涵蓋 2/3） |
+| compare lightRAG with GraphRAG | Comparison / Cost | ✗ 未進前 10（涵蓋 0/2） | 1（涵蓋 1/2） | 1（涵蓋 2/2） |
 | Performance of ablated versions of LightRAG | Ablation | ✗ 未進前 10 | ✗ 未進前 10 | 1 |
 | 消融實驗的結果如何？ | Ablation | ✗ 未進前 10 | 1 | 1 |
 | LightRAG 和 GraphRAG 有什麼差別 | Comparison / Cost | ✗ 未進前 10（涵蓋 0/2） | 1（涵蓋 1/2） | 1（涵蓋 2/2） |
+| How does LightRAG build its graph index? | Graph-based | ✗ 未進前 10 | 1 | 2 |
+| 圖索引是怎麼建立的？ | Graph-based | ✗ 未進前 10 | 1 | 1 |
+| What is the dual-level retrieval paradigm? | Dual-level | ✗ 未進前 10 | 1 | 1 |
+| 雙層檢索是什麼意思？ | Dual-level | ✗ 未進前 10 | 1 | 1 |
+| What datasets were used in the experiments? | Experimental Settings | ✗ 未進前 10 | 1 | 1 |
+| 這篇論文用了哪些資料集？ | Experimental Settings | ✗ 未進前 10 | 2 | △ 4 |
+| How many tokens does GraphRAG need compared to LightRAG? | Cost | ✗ 未進前 10 | ✗ 未進前 10 | 3 |
 
 設定：
 
-- **baseline**：切塊 `fixed` · 檢索 `vector` · 表格處理 `關閉` · 36 個片段、0 張表
-- **+結構**：切塊 `section` · 檢索 `vector` · 表格處理 `關閉` · 49 個片段、0 張表
-- **improved**：切塊 `section` · 檢索 `hybrid` · 表格處理 `開啟` · 89 個片段、5 張表
+- **1 基準版**：切塊 `fixed` · 檢索 `vector` · 表格處理 `關閉` · 36 個片段、0 張表
+- **2 加結構感知**：切塊 `section` · 檢索 `vector` · 表格處理 `關閉` · 49 個片段、0 張表
+- **3 完整系統**：切塊 `section` · 檢索 `hybrid` · 表格處理 `開啟` · 89 個片段、5 張表
 
 ## 表格保真度
 
@@ -52,4 +59,4 @@
 章節來源：`toc` 為 PDF 內建大綱，`regex` 為編號規則，`font` 為字型分群。
 四篇皆成功取得章節結構，其中一篇無內建大綱而由第二級規則接手。
 
-_評估耗時 34 秒_
+_評估耗時 35 秒_

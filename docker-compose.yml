@@ -26,6 +26,8 @@ services:
     image: prom/prometheus:v3.1.0
     volumes:
       - ./ops/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      # 沒有這個卷的話，容器一旦重建，所有時間序列資料就消失
+      - prometheus:/prometheus
     ports:
       - "9090:9090"
     depends_on:
@@ -54,3 +56,4 @@ services:
 
 volumes:
   storage:
+  prometheus:
