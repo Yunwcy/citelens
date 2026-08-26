@@ -129,6 +129,12 @@ class ParsedPdf:
 
     # --- 定位 -------------------------------------------------------------
 
+    def order_of(self, page_no: int, y0: float, x0: float) -> float:
+        """與 blocks() 相同的閱讀順序座標，供表格定位到正確章節。"""
+        page = self.doc[page_no - 1]
+        column = 1 if (self._columns == 2 and x0 >= page.rect.width / 2) else 0
+        return (page_no - 1) * 10_000 + column * (page.rect.height + 1) + y0
+
     def locate(self, text: str, page_no: int, min_order: float = -1.0) -> float | None:
         """在指定頁尋找一段文字，回傳其閱讀順序索引。
 

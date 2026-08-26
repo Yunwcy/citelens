@@ -30,3 +30,9 @@ def all_pdfs() -> list[Path]:
 def lightrag(lightrag_pdf):
     from app.services.ingest import ingest
     return ingest(lightrag_pdf)
+
+
+@pytest.fixture(scope="session")
+def lightrag_index(lightrag):
+    from app.retrieval.index import DocumentIndex
+    return DocumentIndex.build("test-lightrag", lightrag)

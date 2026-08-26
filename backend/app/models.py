@@ -107,6 +107,7 @@ class Table:
     caption: str
     y0: float
     y1: float
+    order: float
     strategy: str                                    # lattice | booktabs
     kind: str = "data"                               # data | prose
     header_levels: list[list[str]] = field(default_factory=list)

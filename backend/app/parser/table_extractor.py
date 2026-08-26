@@ -151,7 +151,7 @@ def _extract_one(
 
     table = Table(
         table_id=tid, page=pno, caption=_caption(page, top, x0, x1),
-        y0=top, y1=bottom, strategy=strategy,
+        y0=top, y1=bottom, order=pdf.order_of(pno, top, x0), strategy=strategy,
         header_levels=header_levels, columns=columns, rows=rows,
         markdown=_markdown(header_levels, template, body_rows),
     )

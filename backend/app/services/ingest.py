@@ -104,9 +104,12 @@ def _table_chunks(tables: list[Table], sections: list[Section]) -> list[Chunk]:
 
 
 def _owning_section(t: Table, sections: list[Section]) -> Section | None:
-    """表格所屬章節，用於引用時顯示「p.8 · 4.3 Ablation Studies」。"""
-    best = None
-    for s in sections:
-        if any(b.page == t.page and b.y0 <= t.y0 for b in s.blocks) or s.page_start <= t.page:
-            best = s
-    return best
+    """表格所屬章節，用於引用時顯示「p.8 · Ablation Studies」。
+
+    以閱讀順序落在哪個章節區間判定。先前用頁碼比較會出錯 —— 同一頁可能
+    橫跨兩個章節，取「最後一個 page_start <= 表格頁」會抓到下一節。
+    """
+    return next(
+        (s for s in sections if s.start_order <= t.order < s.end_order),
+        None,
+    )
