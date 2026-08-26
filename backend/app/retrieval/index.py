@@ -32,6 +32,7 @@ class DocumentIndex:
         # 索引必須記住是哪個後端建的。查詢時若改用預設後端，兩邊的向量空間
         # 不同，結果會是錯的 —— 維度剛好相同時甚至不會報錯，只會靜默地爛掉。
         self.backend = meta.get("embedding_backend")
+        self.sections = []      # 由 build() 填入，供摘要使用；載入既有索引時為空
         self.chunks = chunks
         self.tables = {t.table_id: t for t in tables}
         self.meta = meta
@@ -80,7 +81,9 @@ class DocumentIndex:
             chunks_per_second=meta["chunks_per_second"],
             api_calls=0 if backend != "openai" else len(res.chunks),
         )
-        return cls(doc_id, res.chunks, vectors, res.tables, meta)
+        idx = cls(doc_id, res.chunks, vectors, res.tables, meta)
+        idx.sections = res.sections
+        return idx
 
     @property
     def dir(self) -> Path:

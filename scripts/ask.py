@@ -18,15 +18,15 @@ from app.services import qa  # noqa: E402
 from app.services.ingest import ingest  # noqa: E402
 
 DEMO = [
-    ("summary this document", "qa"),
-    ("compare lightRAG with GraphRAG", "comparison"),
-    ("Performance of ablated versions of LightRAG", "qa"),
+    "summary this document",
+    "compare lightRAG with GraphRAG",
+    "Performance of ablated versions of LightRAG",
 ]
 
 
-async def run(idx: DocumentIndex, question: str, route: str, k: int, debug: bool) -> None:
+async def run(idx: DocumentIndex, question: str, k: int, debug: bool) -> None:
     print(f"\n{'=' * 78}\n問：{question}\n{'-' * 78}")
-    res = await qa.answer(idx, question, top_k=k, route=route)
+    res = await qa.answer(idx, question, top_k=k)
     print(res.text)
 
     if res.sources:
@@ -36,7 +36,15 @@ async def run(idx: DocumentIndex, question: str, route: str, k: int, debug: bool
             print(f"  [{s.n}] {loc}   {s.kind}   分數 {s.score:.4f}")
 
     d = res.debug
-    print(f"\n脈絡 {d['context_tokens']}/{d['context_budget']} tokens · "
+    print(f"\n路由 {d['route']}（{d.get('route_reason', '')}）"
+          + (f" · 對象 {d['entities']}" if d.get("entities") else "")
+          + (f" · {d['table_id']}" if d.get("table_id") else "")
+          + (" · 命中快取" if d.get("cached") else ""))
+    if d["route"] == "summary":
+        print(f"章節摘要 {d['sections_summarized']} 段 · 模型呼叫 {d['n_llm_calls']} 次 · "
+              f"耗時 {d['total_ms']:.0f} ms")
+        return
+    print(f"脈絡 {d['context_tokens']}/{d['context_budget']} tokens · "
           f"片段 {d['packed']}/{d['retrieved']}"
           + (f" · 捨棄 {len(d['dropped'])}" if d["dropped"] else "")
           + (f" · 裁切 {len(d['truncated'])}" if d["truncated"] else ""))
@@ -61,10 +69,10 @@ async def main() -> None:
           f"{idx.meta['embedding_model']}")
 
     if args.demo:
-        for q, route in DEMO:
-            await run(idx, q, route, args.k, args.debug)
+        for q in DEMO:
+            await run(idx, q, args.k, args.debug)
     else:
-        await run(idx, args.question, "qa", args.k, args.debug)
+        await run(idx, args.question, args.k, args.debug)
 
 
 if __name__ == "__main__":
