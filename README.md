@@ -3,6 +3,7 @@
 **受限脈絡下的長文件溯源問答系統**
 
 上傳 PDF 或貼上 arXiv 連結，針對文件內容提問，每個回答都附上頁碼與章節出處。
+回答中的表格以表格呈現，數值可經由確定性查表核對。
 
 在假設語言模型脈絡上限僅有 10K tokens 的前提下，處理數萬 token 的長文件，
 並確保表格數值不因解析而失真。
@@ -29,6 +30,7 @@
 - **查詢路由** — 摘要、比較、表格查詢、一般問答各走不同策略
 - **階層式摘要** — 以章節為單位 map-reduce，結果快取
 - **脈絡預算管理** — 依分數組裝檢索內容，超出預算時裁切並記錄
+- **由網址匯入** — arXiv 連結自動正規化並取回標題，含 SSRF 防護
 
 ---
 
@@ -113,7 +115,7 @@ cd backend && python -m pytest tests -q                      # 36 項測試
 
 ## 對外介面
 
-- REST 與 SSE：`/api/documents`、`/api/query`、`/api/jobs/{id}/events`
+- REST 與 SSE：`/api/documents`、`/api/documents/from-url`、`/api/query`、`/api/jobs/{id}/events`
 - Prometheus：`/api/metrics`
 - MCP server：`python -m app.mcp_server`，提供 `search_document`、
   `get_table_cell`、`summarize_document`、`list_documents` 四個工具。
