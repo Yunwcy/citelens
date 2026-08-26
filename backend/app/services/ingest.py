@@ -34,13 +34,22 @@ class IngestResult:
         return [c for c in self.chunks if c.kind != "text"]
 
 
-def ingest(path: str | Path, strategy: str | None = None) -> IngestResult:
+def ingest(
+    path: str | Path,
+    strategy: str | None = None,
+    use_tables: bool = True,
+) -> IngestResult:
+    """use_tables=False 供評估的對照組使用。
+
+    關閉後表格區域不再單獨抽取，其文字會以一般段落的形式留在切塊中 ——
+    這正是未做表格處理的系統會有的行為，對照才有意義。
+    """
     with ParsedPdf(path) as pdf:
         prof = profiler.profile(pdf)
         sections, source = section_detector.detect(pdf, prof)
         prof.section_source = source
 
-        tables = table_extractor.extract(pdf, prof)
+        tables = table_extractor.extract(pdf, prof) if use_tables else []
         chunks = section_chunker.chunk_sections(
             sections, strategy, exclude=_in_table(tables)
         )

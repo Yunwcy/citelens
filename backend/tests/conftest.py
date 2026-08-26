@@ -36,3 +36,19 @@ def lightrag(lightrag_pdf):
 def lightrag_index(lightrag):
     from app.retrieval.index import DocumentIndex
     return DocumentIndex.build("test-lightrag", lightrag)
+
+
+@pytest.fixture(scope="session", autouse=True)
+def _release_onnx_models():
+    """測試結束前釋放向量化模型。
+
+    fastembed 的 ONNX 執行環境若留到直譯器結束才釋放，在 macOS 上會拋出
+    recursive_mutex 錯誤並使行程以非零狀態結束 —— 測試全部通過，CI 卻是紅燈。
+    """
+    yield
+    import gc
+
+    from app.retrieval.embedding import get_embedder
+
+    get_embedder.cache_clear()
+    gc.collect()

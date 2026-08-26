@@ -123,7 +123,7 @@ def _extract_one(
     if n_cols < 2:
         return None
 
-    header_levels = [_assign_span(r["cells"], template) for r in header_rows]
+    header_levels = [_assign_span(r["cells"], template, span=True) for r in header_rows]
     # 原始表頭要另外留一份：header_levels 會隨群組小標被替換，
     # 整表渲染若用替換後的版本，第一個區塊會被標成最後一個群組的欄名。
     original_levels = [list(lvl) for lvl in header_levels]
@@ -133,14 +133,15 @@ def _extract_one(
     seen_labels: Counter = Counter()
     group = ""
     for r in body_rows:
-        aligned = _assign_span(r["cells"], template)
+        aligned = _assign_span(r["cells"], template, span=False)
         if not any(_NUMBER.search(c) for c in aligned) and any(aligned[1:]):
             # 無數值的內文列是群組小標，取代最內層表頭並為後續列標上群組名。
             # 群組名取「這一列新出現、而前一層表頭沒有」的標籤：例如前一層是
             # NaiveRAG / LightRAG，這一列是 NaiveRAG / -High，群組名即 -High。
             prev = {v for v in (header_levels[-1] if header_levels else []) if v}
             group = " ".join(dict.fromkeys(v for v in aligned[1:] if v and v not in prev))
-            header_levels = header_levels[:-1] + [aligned] if header_levels else [aligned]
+            spanned = _assign_span(r["cells"], template, span=True)
+            header_levels = header_levels[:-1] + [spanned] if header_levels else [spanned]
             columns = _labels(header_levels, n_cols)
             continue
         label = f"{group} / {aligned[0]}" if group else aligned[0]
@@ -161,9 +162,13 @@ def _extract_one(
 
     values = [v for _, vals in rows for v in vals.values()]
     numeric_ratio = sum(1 for v in values if _NUMBER.search(v)) / max(len(values), 1)
-    if numeric_ratio < 0.3:
-        # 案例研究這類敘述型表格，儲存格是長段文字而非可查的數值。
-        # 逐列線性化沒有意義，數值守恆也不適用，改為只保留整表原文。
+    mean_len = sum(len(v) for v in values) / max(len(values), 1)
+
+    # 敘述型表格（案例研究、範例對照）的儲存格是整段文字而非可查的數值。
+    # 只看數值比例不夠：長段文字裡常夾著年份或編號，比例會被拉高。
+    # 加上平均字數判斷後，這類表格才會在驗證之前就被正確歸類 ——
+    # 否則它們會以「驗證失敗」的形式計入統計，讓數字看起來像解析出了問題。
+    if numeric_ratio < 0.3 or mean_len > 60:
         return _as_prose(table, "敘述型表格，採整表模式")
 
     table.validated, table.validation_note = _validate(page, x0, top, x1, bottom, table)
@@ -229,16 +234,39 @@ def _template(body_rows: list[dict], inner_v: list[Rule], x0: float, x1: float) 
     return []
 
 
-def _assign_span(cells: list[tuple[str, float, float]], template: list[tuple[float, float]]) -> list[str]:
+def _assign_span(
+    cells: list[tuple[str, float, float]],
+    template: list[tuple[float, float]],
+    span: bool = False,
+) -> list[str]:
     """把儲存格對應到欄位範本。
 
-    兩段式：先用 x 重疊精確配對，再用相鄰儲存格的中線補上沒被覆蓋的欄。
-    第二段是必要的 —— 橫跨兩欄的表頭（例如 Agriculture 蓋住 NaiveRAG 與
-    LightRAG 兩欄）文字寬度往往只夠蓋到其中一欄，純靠重疊會漏掉另一欄，
-    導致欄名重複、字典鍵碰撞、數值被覆寫。
+    span=True（表頭）：一個儲存格可以覆蓋多欄。先以 x 重疊配對，再用相鄰
+    儲存格的中線補上未覆蓋的欄 —— 橫跨兩欄的表頭（例如 Agriculture 蓋住
+    NaiveRAG 與 LightRAG）文字寬度往往只夠蓋到其中一欄，純靠重疊會漏掉另一欄。
+
+    span=False（內文）：一個儲存格只能落在一欄。內文列的儲存格數少於欄數時，
+    代表該列真的缺值，而不是有跨欄；若比照表頭做補位，同一個數值會被複製到
+    相鄰欄位 —— 實測有四張表因此在守恆檢查中出現「多出」的重複數值。
     """
     out = [""] * len(template)
     if not cells:
+        return out
+
+    if not span:
+        for text, cx0, cx1 in cells:
+            overlaps = [
+                (min(cx1, tx1) - max(cx0, tx0), i)
+                for i, (tx0, tx1) in enumerate(template)
+                if min(cx1, tx1) - max(cx0, tx0) > 0
+            ]
+            if overlaps:
+                i = max(overlaps)[1]                      # 重疊最多的那一欄
+            else:
+                centre = (cx0 + cx1) / 2
+                i = min(range(len(template)),
+                        key=lambda j: abs(sum(template[j]) / 2 - centre))
+            out[i] = f"{out[i]} {text}".strip() if out[i] else text
         return out
 
     for text, cx0, cx1 in cells:
@@ -247,8 +275,7 @@ def _assign_span(cells: list[tuple[str, float, float]], template: list[tuple[flo
                 out[i] = f"{out[i]} {text}".strip() if out[i] else text
 
     # 涵蓋範圍只在左側設限：列標題欄位於表頭左方，不應被填入；
-    # 右側則開放到底 —— 最後一個跨欄表頭（例如 Mix）必須延伸到最後一欄，
-    # 否則該欄會只剩下層表頭，欄名不完整且可能與其他欄重名。
+    # 右側則開放到底 —— 最後一個跨欄表頭（例如 Mix）必須延伸到最後一欄。
     lo = cells[0][1]
     bounds = [(cells[i][2] + cells[i + 1][1]) / 2 for i in range(len(cells) - 1)]
     for i, (tx0, tx1) in enumerate(template):
@@ -295,7 +322,7 @@ def _markdown(header_levels, template, body_rows) -> str:
         lines.append("| " + " | ".join(lvl) + " |")
     lines.append("|" + "|".join([" --- "] * len(template)) + "|")
     for r in body_rows:
-        lines.append("| " + " | ".join(_assign_span(r["cells"], template)) + " |")
+        lines.append("| " + " | ".join(_assign_span(r["cells"], template, span=False)) + " |")
     return "\n".join(lines)
 
 
