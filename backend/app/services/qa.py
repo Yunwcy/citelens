@@ -5,9 +5,11 @@
 """
 from __future__ import annotations
 
+import asyncio
 import re
 import time
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
+from typing import AsyncIterator
 
 from app.config import settings
 from app.llm import client, prompts
@@ -17,7 +19,9 @@ from app.retrieval.budget import PackedContext, pack
 from app.retrieval.hybrid import rrf
 from app.retrieval.index import DocumentIndex
 from app.router import query_router
+from app.services.limits import QUERY as QUERY_SEM
 from app.summarization import hierarchical
+from app.util import tokens
 
 _CITE = re.compile(r"\[(\d+)\]")
 
@@ -56,15 +60,7 @@ async def answer(
         return await _summary(index, question, r, started)
 
     t = time.perf_counter()
-    if r.name == "comparison":
-        # 比較類問題放寬名額：需要涵蓋雙方的架構、效能與成本三個面向，
-        # 而實測脈絡僅用掉約四成預算，額度充足。
-        hits = _multi_search(
-            index, query_router.subqueries(question, r.entities),
-            (top_k or settings.top_k) + 6,
-        )
-    else:
-        hits = index.search(question, top_k=top_k)
+    hits = await retrieve(index, question, r, top_k)
     retrieval_ms = (time.perf_counter() - t) * 1000
 
     chunks = [index.chunk(h.index) for h in hits]
@@ -110,6 +106,20 @@ async def answer(
         **debug,
     )
     return Answer(text=result.text, sources=sources, debug=debug)
+
+
+async def retrieve(index: DocumentIndex, question: str, r, top_k: int | None) -> list:
+    """檢索一律移出事件迴圈：向量化是同步的 CPU 工作，
+    直接在 async handler 內執行會讓整個服務停住。"""
+    async with QUERY_SEM:
+        if r.name == "comparison":
+            # 比較類問題放寬名額：需要涵蓋雙方的架構、效能與成本三個面向，
+            # 而實測脈絡僅用掉約四成預算，額度充足。
+            return await asyncio.to_thread(
+                _multi_search, index, query_router.subqueries(question, r.entities),
+                (top_k or settings.top_k) + 6,
+            )
+        return await asyncio.to_thread(index.search, question, top_k)
 
 
 def _multi_search(index: DocumentIndex, queries: list[str], top_k: int | None) -> list:
@@ -211,3 +221,75 @@ def _used_sources(text: str, ctx: PackedContext, scores: dict[str, float]) -> li
             )
         )
     return out
+
+
+async def answer_stream(
+    index: DocumentIndex,
+    question: str,
+    top_k: int | None = None,
+) -> AsyncIterator[dict]:
+    """串流版本，供 SSE 使用。
+
+    先送出階段訊息再送內容：使用者等待的七秒幾乎全在模型生成，
+    期間若畫面完全空白，會被誤認為系統當掉。
+    """
+    started = time.perf_counter()
+    r = query_router.route(question, index.tables)
+    yield {"type": "route", "route": r.name, "reason": r.reason,
+           "entities": r.entities, "table_id": r.table_id}
+
+    if r.name == "summary":
+        res = await _summary(index, question, r, started)
+        yield {"type": "token", "text": res.text}
+        yield {"type": "done", "sources": [], "debug": res.debug}
+        return
+
+    yield {"type": "stage", "stage": "retrieving"}
+    t = time.perf_counter()
+    hits = await retrieve(index, question, r, top_k)
+    retrieval_ms = (time.perf_counter() - t) * 1000
+
+    chunks = [index.chunk(h.index) for h in hits]
+    if r.name == "table_lookup" and r.table_id:
+        chunks = _table_first(index, r.table_id, chunks)
+    scores = {index.chunk(h.index).chunk_id: h.score for h in hits}
+    ctx = pack(chunks, all_chunks=index.chunks)
+    yield {"type": "stage", "stage": "packing",
+           "packed": len(ctx.blocks), "tokens": ctx.used_tokens, "budget": ctx.budget}
+
+    system = prompts.COMPARISON_SYSTEM if r.name == "comparison" else prompts.ANSWER_SYSTEM
+    prompt = prompts.ANSWER_USER.format(context=ctx.render(_cite_label), question=question)
+
+    yield {"type": "stage", "stage": "generating"}
+    llm_started = time.perf_counter()
+    parts: list[str] = []
+    async for piece in client.generate_stream(prompt, system=system):
+        parts.append(piece)
+        yield {"type": "token", "text": piece}
+
+    text = "".join(parts)
+    llm_ms = int((time.perf_counter() - llm_started) * 1000)
+    sources = _used_sources(text, ctx, scores)
+
+    debug = {
+        "route": r.name, "route_reason": r.reason, "entities": r.entities,
+        "table_id": r.table_id, "retrieved": len(hits), "packed": len(ctx.blocks),
+        "context_tokens": ctx.used_tokens, "context_budget": ctx.budget,
+        "dropped": ctx.dropped, "truncated": ctx.truncated,
+        # 串流模式取不到 usage，以 tiktoken 估算，欄位語意與非串流一致
+        "prompt_tokens": tokens.count(prompt) + tokens.count(system),
+        "completion_tokens": tokens.count(text),
+        "retrieval_ms": round(retrieval_ms, 1), "llm_ms": llm_ms,
+        "total_ms": round((time.perf_counter() - started) * 1000, 1),
+    }
+    debug["cost_usd"] = round(
+        (debug["prompt_tokens"] * settings.price_input_per_1m
+         + debug["completion_tokens"] * settings.price_output_per_1m) / 1_000_000, 6
+    )
+    metrics.record("query", doc_id=index.doc_id, question=question,
+                   model=settings.llm_model, embedding_backend=index.backend,
+                   streamed=True, n_sources=len(sources), **debug)
+
+    yield {"type": "done",
+           "sources": [asdict(s) for s in sources],
+           "debug": debug}
