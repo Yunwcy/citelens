@@ -25,13 +25,14 @@ class Settings(BaseSettings):
     # --- 策略開關（evaluation 對照組）--------------------------------------
     chunk_strategy: Literal["section", "fixed"] = "section"
     retrieval_mode: Literal["hybrid", "vector"] = "hybrid"
-    embedding_backend: Literal["onnx", "onnx-large", "openai"] = "onnx"
+    embedding_backend: Literal["onnx", "zh", "onnx-large", "openai"] = "onnx"
 
     # fastembed 未收錄 multilingual-e5-small，實測後改用同為多語言的
     # MiniLM（約 220MB，50 種語言）。品質升級路徑是 multilingual-e5-large
     # （2.24GB，100 種語言，專為檢索訓練），由評估數據決定是否切換。
     embedding_model_onnx: str = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
-    embedding_model_onnx_large: str = "intfloat/multilingual-e5-large"
+    embedding_model_zh: str = "jinaai/jina-embeddings-v2-base-zh"          # 中英混合，640MB
+    embedding_model_onnx_large: str = "intfloat/multilingual-e5-large"     # 100 語言，2.24GB
     embedding_model_openai: str = "text-embedding-3-small"
 
     # --- Context budget ---------------------------------------------------

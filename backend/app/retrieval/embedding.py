@@ -87,6 +87,8 @@ def get_embedder(backend: str | None = None) -> Embedder:
     backend = backend or settings.embedding_backend
     if backend == "onnx":
         embedder = FastEmbedBackend(settings.embedding_model_onnx)
+    elif backend == "zh":
+        embedder = FastEmbedBackend(settings.embedding_model_zh)
     elif backend == "onnx-large":
         embedder = FastEmbedBackend(settings.embedding_model_onnx_large)
     elif backend == "openai":

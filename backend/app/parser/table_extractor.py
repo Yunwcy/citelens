@@ -124,6 +124,9 @@ def _extract_one(
         return None
 
     header_levels = [_assign_span(r["cells"], template) for r in header_rows]
+    # 原始表頭要另外留一份：header_levels 會隨群組小標被替換，
+    # 整表渲染若用替換後的版本，第一個區塊會被標成最後一個群組的欄名。
+    original_levels = [list(lvl) for lvl in header_levels]
     columns = _labels(header_levels, n_cols)
 
     rows: list[tuple[str, dict[str, str]]] = []
@@ -153,7 +156,7 @@ def _extract_one(
         table_id=tid, page=pno, caption=_caption(page, top, x0, x1),
         y0=top, y1=bottom, order=pdf.order_of(pno, top, x0), strategy=strategy,
         header_levels=header_levels, columns=columns, rows=rows,
-        markdown=_markdown(header_levels, template, body_rows),
+        markdown=_markdown(original_levels, template, body_rows),
     )
 
     values = [v for _, vals in rows for v in vals.values()]
