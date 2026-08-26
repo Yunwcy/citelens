@@ -51,6 +51,7 @@ class DocumentProfile:
     n_toc_entries: int
     n_h_rules: int
     n_v_rules: int
+    title: str | None = None
     section_source: str = "unknown"      # toc | regex | font | none
     table_strategy: str = "unknown"      # lattice | booktabs | whitespace | unsupported
 

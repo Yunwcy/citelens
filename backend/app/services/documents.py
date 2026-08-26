@@ -178,7 +178,8 @@ def list_documents() -> list[dict]:
         prof = meta.get("profile", {})
         out.append({
             "doc_id": meta["doc_id"],
-            "filename": info.get("filename", meta["doc_id"]),
+            "filename": prof.get("title") or info.get("filename", meta["doc_id"]),
+            "source_name": info.get("filename", meta["doc_id"]),
             "uploaded": info.get("uploaded"),
             "pages": prof.get("n_pages"),
             "chunks": meta.get("n_chunks"),

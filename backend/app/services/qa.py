@@ -35,6 +35,7 @@ class Source:
     chunk_id: str
     score: float
     text: str
+    cited: bool = True
 
 
 @dataclass(slots=True)
@@ -210,12 +211,14 @@ def _cite_label(c: Chunk) -> str:
 
 
 def _used_sources(text: str, ctx: PackedContext, scores: dict[str, float]) -> list[Source]:
-    """只回傳答案實際引用到的來源。
+    """回傳答案實際引用到的來源。
 
-    把沒被引用的片段也列出來，會讓右側面板看起來像是「系統找到很多東西」，
-    但使用者無法分辨哪些真的支撐了答案。引用面板的價值在於可查核，不在於數量。
+    模型未標註任何引用時，回傳全部片段但標記為未引用 ——
+    介面必須據此改變面板標題，否則使用者會以為那些片段支撐了答案，
+    但答案裡根本沒有對應的標記可循。
     """
     used = {int(n) for n in _CITE.findall(text)}
+    cited = bool(used)
     out = []
     for n, chunk, shown in ctx.blocks:
         if used and n not in used:
@@ -224,7 +227,7 @@ def _used_sources(text: str, ctx: PackedContext, scores: dict[str, float]) -> li
             Source(
                 n=n, page=chunk.page, section=chunk.section_title, kind=chunk.kind,
                 chunk_id=chunk.chunk_id, score=round(scores.get(chunk.chunk_id, 0.0), 4),
-                text=" ".join(shown.split())[:600],
+                text=" ".join(shown.split())[:600], cited=cited,
             )
         )
     return out

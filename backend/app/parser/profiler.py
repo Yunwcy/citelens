@@ -28,6 +28,7 @@ def profile(pdf: ParsedPdf) -> DocumentProfile:
     body, headings = _font_levels(pdf)
 
     prof = DocumentProfile(
+        title=pdf.title(),
         n_pages=pdf.n_pages,
         has_text_layer=has_text,
         columns=columns,

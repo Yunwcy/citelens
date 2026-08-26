@@ -5,11 +5,45 @@
 """
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 import pymupdf
 
 from app.models import Block, Rule
+
+def _clean_title(text: str) -> str:
+    """修正小型大寫（small-caps）造成的字距問題。
+
+    以 small-caps 排版時，每個詞的首字母與其餘字母是不同字級的 span，
+    抽取後會變成「L IGHT RAG: S IMPLE ... -A UGMENTED」。
+
+    合併規則：前一段去掉標點後只剩一個大寫字母，且當前段全為大寫 ——
+    這兩段原本屬於同一個詞。
+
+    合併後不轉首字大寫：`.title()` 會把 LIGHTRAG 變成 Lightrag，反而破壞縮寫。
+    """
+    parts = text.split()
+    if len(parts) < 4:
+        return text
+    singles = sum(1 for p in parts if len(p.strip("-\u2013\u2014:")) == 1
+                  and p.strip("-\u2013\u2014:").isalpha())
+    if singles / len(parts) < 0.2:
+        return text
+
+    out: list[str] = []
+    for part in parts:
+        prev = out[-1] if out else ""
+        core = prev.strip("-\u2013\u2014:")
+        if prev and prev[-1].isupper() and len(core) == 1 and part.isupper():
+            out[-1] = prev + part
+        else:
+            out.append(part)
+    return " ".join(out)
+
+
+# 明顯不是標題的開頭：預印本識別碼、版本標記、會議標頭
+_NOT_TITLE = re.compile(r"^(arxiv:|doi:|preprint|under review|published as|proceedings of)", re.I)
 
 # 判定線條的門檻。橫線用於 booktabs 表格錨定，直線用於格線表格。
 _H_MIN_WIDTH = 100
@@ -53,6 +87,50 @@ class ParsedPdf:
         return "".join(self.doc[i].get_text() for i in range(min(n_pages, self.n_pages)))
 
     # --- 線條 -------------------------------------------------------------
+
+    def title(self) -> str | None:
+        """推測文件標題。
+
+        優先讀 PDF metadata；學術論文的 metadata 標題多半是空的，
+        因此退而取第一頁上方字級最大的文字 —— 那通常就是標題。
+        """
+        meta = (self.doc.metadata or {}).get("title") or ""
+        meta = " ".join(meta.split())
+        if 8 <= len(meta) <= 250:
+            return meta
+
+        if not self.n_pages:
+            return None
+        page = self.doc[0]
+        cutoff = page.rect.height * 0.45          # 只看上半部，避開摘要與正文
+        best: tuple[float, float, list[str]] | None = None
+
+        for block in page.get_text("dict")["blocks"]:
+            if block.get("type") != 0 or block["bbox"][1] > cutoff:
+                continue
+            x0, y0, x1, y1 = block["bbox"]
+            # 排除頁緣的直立戳記：arXiv 在左側邊欄印的識別碼是旋轉文字，
+            # 字級大又位於上方，不排除的話會被誤認為標題
+            if (y1 - y0) > (x1 - x0):
+                continue
+            if x1 < page.rect.width * 0.15 or x0 > page.rect.width * 0.85:
+                continue
+            sizes = [sp["size"] for ln in block.get("lines", []) for sp in ln["spans"]]
+            if not sizes:
+                continue
+            size = round(max(sizes), 1)
+            text = " ".join(
+                " ".join(sp["text"] for sp in ln["spans"]).strip()
+                for ln in block.get("lines", [])
+            )
+            text = " ".join(text.split())
+            if not (8 <= len(text) <= 250) or _NOT_TITLE.match(text):
+                continue
+            # 同樣字級時取較上方的區塊
+            if best is None or size > best[0] or (size == best[0] and block["bbox"][1] < best[1]):
+                best = (size, block["bbox"][1], text)
+
+        return _clean_title(best[2]) if best else None
 
     def rules(self) -> list[Rule]:
         out: list[Rule] = []

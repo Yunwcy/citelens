@@ -6,10 +6,19 @@ const STAGE_LABEL: Record<string, string> = {
   summarizing: "摘要準備中", ready: "就緒", failed: "無法解析",
 };
 
+export type Job = {
+  docId: string;
+  filename: string;
+  stage: string;
+  pages?: number;
+  chunks?: number;
+  tables?: number;
+};
+
 type Props = {
   documents: DocSummary[];
   activeId: string | null;
-  stage: string | null;
+  job: Job | null;
   error: string | null;
   onSelect: (id: string) => void;
   onUpload: (file: File) => void;
@@ -17,11 +26,11 @@ type Props = {
 };
 
 export function DocumentPanel({
-  documents, activeId, stage, error, onSelect, onUpload, onUploadUrl,
+  documents, activeId, job, error, onSelect, onUpload, onUploadUrl,
 }: Props) {
   const input = useRef<HTMLInputElement>(null);
   const [url, setUrl] = useState("");
-  const busy = stage !== null && stage !== "ready" && stage !== "failed";
+  const busy = job !== null && job.stage !== "ready" && job.stage !== "failed";
 
   return (
     <aside className="w-60 shrink-0 flex flex-col gap-2 p-3 border-r border-line">
@@ -42,17 +51,28 @@ export function DocumentPanel({
               {d.pages} 頁 · {d.chunks} 個片段
             </div>
             <div className="mt-1.5 flex items-center gap-1.5">
-              <Badge stage={active && busy ? stage! : "ready"} />
+              <Badge stage="ready" />
               {d.tables ? <span className="text-xs text-ink-faint">{d.tables} 張表</span> : null}
             </div>
           </button>
         );
       })}
 
-      {busy && !documents.some((d) => d.doc_id === activeId) && (
+      {/* 處理中的卡片獨立於選取狀態顯示。先前綁在 activeId 上，
+          使用者在處理期間點了別份文件，這張卡片就會消失，看起來像檔案不見了。 */}
+      {busy && job && !documents.some((d) => d.doc_id === job.docId) && (
         <div className="rounded-lg border border-line bg-surface p-2.5">
-          <div className="truncate font-medium text-ink-soft">處理中</div>
-          <div className="mt-1.5"><Badge stage={stage!} /></div>
+          <div className="truncate font-medium text-ink-soft">{job.filename}</div>
+          {job.pages ? (
+            <div className="mt-0.5 text-xs text-ink-soft">
+              {job.pages} 頁{job.chunks ? ` · ${job.chunks} 個片段` : ""}
+              {job.tables ? ` · ${job.tables} 張表` : ""}
+            </div>
+          ) : null}
+          <div className="mt-1.5 flex flex-col gap-1">
+            <Badge stage={job.stage} />
+            <span className="text-xs text-ink-faint">處理中，可繼續使用其他文件</span>
+          </div>
         </div>
       )}
 

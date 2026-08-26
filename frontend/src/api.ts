@@ -11,12 +11,13 @@ export type DocSummary = {
   tables: number | null;
   section_source: string | null;
   url?: string | null;
+  source_name?: string;
   has_summary: boolean;
 };
 
 export type Source = {
   n: number; page: number; section: string; kind: string;
-  chunk_id: string; score: number; text: string;
+  chunk_id: string; score: number; text: string; cited: boolean;
 };
 
 export type Debug = {
