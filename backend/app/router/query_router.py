@@ -56,7 +56,7 @@ def route(question: str, tables: dict[str, Table] | None = None) -> Route:
         return Route("table_lookup", f"命中 {table_id} 的座標標籤",
                      table_id=table_id, matched_labels=labels)
 
-    return Route("qa", "一般問答")
+    return Route("qa", "未命中特殊規則")
 
 
 def _entities(question: str) -> list[str]:
