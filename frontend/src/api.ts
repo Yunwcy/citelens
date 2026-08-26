@@ -38,9 +38,21 @@ export type JobEvent = {
   pages?: number; sections?: number; chunks?: number; tables?: number; cached?: boolean;
 };
 
+const STATUS_MESSAGE: Record<number, string> = {
+  413: "檔案太大，上限為 30MB",
+  502: "後端沒有回應，請確認服務是否啟動",
+  504: "處理逾時，請重試",
+};
+
 async function json<T>(res: Response): Promise<T> {
-  if (!res.ok) throw new Error((await res.json().catch(() => ({}))).detail ?? `HTTP ${res.status}`);
-  return res.json();
+  if (res.ok) return res.json();
+  // 反向代理擋下的請求會回傳 HTML 而非 JSON，直接 res.json() 會拋出解析錯誤，
+  // 使用者看到的訊息會與真正的原因無關。
+  const detail = await res
+    .json()
+    .then((b) => b?.detail as string | undefined)
+    .catch(() => undefined);
+  throw new Error(detail ?? STATUS_MESSAGE[res.status] ?? `伺服器錯誤（HTTP ${res.status}）`);
 }
 
 export const uploadFromUrl = async (url: string) =>
