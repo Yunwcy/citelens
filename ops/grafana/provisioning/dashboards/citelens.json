@@ -427,7 +427,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "histogram_quantile(0.5, sum(rate(citelens_prompt_tokens_bucket[10m])) by (le))",
+          "expr": "histogram_quantile(0.5, sum(rate(citelens_context_tokens_bucket[10m])) by (le))",
           "legendFormat": "p50",
           "datasource": {
             "type": "prometheus",
@@ -438,7 +438,7 @@
         },
         {
           "refId": "B",
-          "expr": "histogram_quantile(0.95, sum(rate(citelens_prompt_tokens_bucket[10m])) by (le))",
+          "expr": "histogram_quantile(0.95, sum(rate(citelens_context_tokens_bucket[10m])) by (le))",
           "legendFormat": "p95",
           "datasource": {
             "type": "prometheus",
@@ -448,7 +448,7 @@
           "range": true
         }
       ],
-      "description": "送進模型的內容量，從未觸及 7,000 的上限。",
+      "description": "檢索內容實際佔用的 token 數。不含系統提示與問題 —— 那兩項另有保留額度，合計才是模型的 10,000 上限。",
       "options": {
         "legend": {
           "displayMode": "list",

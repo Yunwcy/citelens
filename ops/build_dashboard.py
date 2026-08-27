@@ -108,9 +108,11 @@ panels = [
 
     # ── 第三列：預算與成本 ────────────────────────────────────
     panel(7, "脈絡用量（上限 7,000 tokens）",
-          [target("histogram_quantile(0.5, sum(rate(citelens_prompt_tokens_bucket[10m])) by (le))", "p50"),
-           target("histogram_quantile(0.95, sum(rate(citelens_prompt_tokens_bucket[10m])) by (le))", "p95")],
-          0, 14, 9, 7, desc="送進模型的內容量，從未觸及 7,000 的上限。",
+          [target("histogram_quantile(0.5, sum(rate(citelens_context_tokens_bucket[10m])) by (le))", "p50"),
+           target("histogram_quantile(0.95, sum(rate(citelens_context_tokens_bucket[10m])) by (le))", "p95")],
+          0, 14, 9, 7,
+          desc="檢索內容實際佔用的 token 數。不含系統提示與問題 —— "
+               "那兩項另有保留額度，合計才是模型的 10,000 上限。",
           options={"legend": LEGEND, "tooltip": TOOLTIP},
           fieldConfig={"defaults": {"unit": "short", "decimals": 0, "max": 7000, "min": 0,
                                     "custom": {"lineWidth": 2, "fillOpacity": 8,

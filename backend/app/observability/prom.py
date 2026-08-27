@@ -73,8 +73,16 @@ REQUEST_SECONDS = Histogram(
     registry=REGISTRY,
 )
 PROMPT_TOKENS = Histogram(
-    "citelens_prompt_tokens", "送進模型的 token 數",
-    buckets=(500, 1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000),
+    "citelens_prompt_tokens", "送進模型的 token 數（系統提示＋脈絡＋問題）",
+    buckets=(500, 1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000, 10000),
+    registry=REGISTRY,
+)
+# 脈絡用量必須與 prompt_tokens 分開量測。prompt 還含系統提示與問題，
+# 本來就會超過 7,000 的檢索預算 —— 拿它畫「脈絡用量」的面板，
+# 會讓圖表看起來剛好壓在上限線上，而說明文字寫著「從未觸及上限」。
+CONTEXT_TOKENS = Histogram(
+    "citelens_context_tokens", "檢索內容佔用的 token 數（上限為檢索預算）",
+    buckets=(500, 1000, 1500, 2000, 3000, 4000, 5000, 6000, 6500, 7000),
     registry=REGISTRY,
 )
 INDEX_SECONDS = Histogram(
@@ -108,6 +116,7 @@ def observe(event: str, fields: dict) -> None:
             RETRIEVAL_SECONDS.observe(fields.get("retrieval_ms", 0) / 1000)
             LLM_SECONDS.observe(fields.get("llm_ms", 0) / 1000)
             PROMPT_TOKENS.observe(fields.get("prompt_tokens", 0))
+            CONTEXT_TOKENS.observe(fields.get("context_tokens", 0))
         if fields.get("dropped"):
             DROPPED.inc(len(fields["dropped"]))
 

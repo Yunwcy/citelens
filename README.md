@@ -210,6 +210,16 @@ python scripts/e2e.py --generality                           # 端到端驗收�
 一律連 nginx，涵蓋上傳大小限制、健康檢查代理、SSE 緩衝等只存在於代理層的行為。
 `--full` 另含重啟與停用後端的驗證，`--cold` 量測冷啟動。
 
+產生監控資料（時間序列面板需要一段連續的流量才看得出趨勢）：
+
+```bash
+python scripts/seed_metrics.py --minutes 7        # 分散送出查詢，輪流走各路由
+python scripts/eval.py --publish                  # 發布檢索準確度與表格驗證結果
+```
+
+評估結果會存於 `/data/eval.json`，指標紀錄存於 `/data/metrics.jsonl`；
+兩者皆於啟動時還原，重啟不會讓儀表板變空。
+
 重現量測結果：
 
 ```bash
