@@ -86,6 +86,8 @@ async def answer(
     chunks = [index.chunk(h.index) for h in hits]
     if r.name == "table_lookup" and r.table_id:
         chunks = _table_first(index, r.table_id, chunks)
+    if r.name == "comparison" and r.entities:
+        chunks = _drop_unrelated_table_rows(chunks, r.entities)
     scores = {index.chunk(h.index).chunk_id: h.score for h in hits}
     ctx = pack(chunks, all_chunks=index.chunks)
 
@@ -176,6 +178,32 @@ def _multi_search(index: DocumentIndex, queries: list[str], top_k: int | None) -
         (fused[i] for i in picked if i in fused),
         key=lambda h: h.score, reverse=True,
     )
+
+
+def _drop_unrelated_table_rows(chunks: list[Chunk], entities: list[str]) -> list[Chunk]:
+    """比較類問題：移除未提及任一被比較對象的表格列。
+
+    論文的表格常把同一組指標對多個基準方法各列一次。以 LightRAG 為例，
+    Table 1 的第一個區塊比的是 NaiveRAG，最後一個區塊才是 GraphRAG，
+    而兩者的列標題都只是「Empowerment」—— 差別只在欄名。
+
+    實測模型會把 NaiveRAG 區塊的數字當成 GraphRAG 的來回答。
+    資料本身沒有錯、引用也指得到，但歸屬錯了 ——
+    這種錯誤看起來完全合理，因此特別危險。
+
+    判準是「同時提到兩個對象」而非「提到任一個」：比較 A 與 B 時，
+    只提到 A 的列無法說明兩者的差異。以此例而言，NaiveRAG 區塊的列
+    雖然含有 LightRAG，卻沒有 GraphRAG，因此不該用來回答這個問題。
+
+    整表片段不移除：它保有完整的欄列對應，模型可據以核對。
+    """
+    names = [e.lower() for e in entities if len(e) > 2]
+    if len(names) < 2:
+        return chunks
+    return [
+        c for c in chunks
+        if c.kind != "table_row" or all(n in c.text.lower() for n in names)
+    ]
 
 
 def _table_first(index: DocumentIndex, table_id: str, chunks: list[Chunk]) -> list[Chunk]:
@@ -283,6 +311,8 @@ async def answer_stream(
     chunks = [index.chunk(h.index) for h in hits]
     if r.name == "table_lookup" and r.table_id:
         chunks = _table_first(index, r.table_id, chunks)
+    if r.name == "comparison" and r.entities:
+        chunks = _drop_unrelated_table_rows(chunks, r.entities)
     scores = {index.chunk(h.index).chunk_id: h.score for h in hits}
     ctx = pack(chunks, all_chunks=index.chunks)
     yield {"type": "stage", "stage": "packing",

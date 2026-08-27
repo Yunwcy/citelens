@@ -103,7 +103,11 @@ def _expand_tables(chunks: list[Chunk], all_chunks: list[Chunk] | None) -> list[
     full_by_table = {
         c.meta.get("table_id"): c for c in all_chunks if c.kind == "table_full"
     }
-    seen: set[str] = set()
+    # 先掃一遍已存在的整表片段，避免檢索本身已取回整表時又補一份
+    seen: set[str] = {
+        c.meta["table_id"] for c in chunks
+        if c.kind == "table_full" and c.meta.get("table_id")
+    }
     out: list[Chunk] = []
     for c in chunks:
         out.append(c)
@@ -113,8 +117,6 @@ def _expand_tables(chunks: list[Chunk], all_chunks: list[Chunk] | None) -> list[
             full = full_by_table.get(tid)
             if full is not None:
                 out.append(full)
-        elif c.kind == "table_full" and tid:
-            seen.add(tid)
     return out
 
 

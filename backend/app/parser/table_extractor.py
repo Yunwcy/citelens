@@ -320,12 +320,42 @@ def _caption(page, top: float, x0: float, x1: float) -> str:
 
 
 def _markdown(header_levels, template, body_rows) -> str:
+    """整表渲染。每一列的標題都補上所屬區塊名稱。
+
+    論文的表格常以分隔列切成多個區塊，各自對應不同的基準方法，
+    而各區塊的列標題完全相同（都是 Comprehensiveness、Diversity…）。
+    只靠分隔列標示區塊時，模型讀 20 列的表格會抓錯區塊 ——
+    實測它把 NaiveRAG 區塊的數字當成 GraphRAG 的來回答。
+
+    把區塊名稱補進每一列的標題後，每一列都能自己說明自己的歸屬。
+    """
     lines = []
     for lvl in header_levels:
         lines.append("| " + " | ".join(lvl) + " |")
     lines.append("|" + "|".join([" --- "] * len(template)) + "|")
+
+    # 第一個區塊沒有分隔列，其基準名稱來自最內層表頭。
+    # 僅在表格確實分成多個區塊時才補 —— 單一區塊的表格加了只會變成雜訊。
+    aligned_rows = [_assign_span(r["cells"], template, span=False) for r in body_rows]
+    multi_block = any(
+        not any(_NUMBER.search(c) for c in cells) and any(cells[1:])
+        for cells in aligned_rows
+    )
+    inner = header_levels[-1] if header_levels else []
+    group = inner[1] if multi_block and len(inner) > 1 and inner[1] else ""
+
+    prev_labels: set[str] = {v for lvl in header_levels for v in lvl if v}
     for r in body_rows:
-        lines.append("| " + " | ".join(_assign_span(r["cells"], template, span=False)) + " |")
+        cells = _assign_span(r["cells"], template, span=False)
+        if not any(_NUMBER.search(c) for c in cells) and any(cells[1:]):
+            new = [v for v in cells[1:] if v and v not in prev_labels]
+            group = new[0] if new else " ".join(dict.fromkeys(v for v in cells[1:] if v))
+            prev_labels = {v for v in cells[1:] if v}
+            lines.append("| " + " | ".join(cells) + " |")
+            continue
+        if group and cells[0]:
+            cells = [f"{group} · {cells[0]}"] + cells[1:]
+        lines.append("| " + " | ".join(cells) + " |")
     return "\n".join(lines)
 
 
