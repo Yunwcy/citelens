@@ -130,10 +130,21 @@ async def _run(job: Job, path: Path) -> None:
             async with _cache_lock:
                 _put(job.doc_id, idx)
 
-        # 摘要在鎖外執行：它是網路等待而非 CPU，不該擋住下一份文件的索引
+        # 摘要在鎖外執行：它是網路等待而非 CPU，不該擋住下一份文件的索引。
+        #
+        # 而且它是唯一需要外部服務的一步 —— 失敗不得讓整份文件被判定為失敗。
+        # 索引到這裡已經完成，文件可以提問；摘要在使用者真的要摘要時會重試。
+        # 實測拔掉網路上傳：解析、切塊、向量化全部成功，只有這一步失敗，
+        # 但介面顯示「連線錯誤」，看起來像整個上傳都沒成功。
         job.emit("summarizing")
-        await hierarchical.build(job.doc_id, res.sections)
-        job.emit("ready", chunks=len(res.chunks), tables=len(res.tables))
+        summary_ok = True
+        try:
+            await hierarchical.build(job.doc_id, res.sections)
+        except Exception as exc:                          # noqa: BLE001
+            summary_ok = False
+            log.warning("摘要建立失敗，文件仍可提問：%s", exc)
+        job.emit("ready", chunks=len(res.chunks), tables=len(res.tables),
+                 summary_ready=summary_ok)
 
     except Exception as exc:                              # noqa: BLE001
         log.exception("索引失敗 %s", job.doc_id)

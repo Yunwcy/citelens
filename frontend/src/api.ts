@@ -39,6 +39,7 @@ export type StreamEvent =
 export type JobEvent = {
   job_id: string; doc_id: string; stage: string; error: string | null;
   pages?: number; sections?: number; chunks?: number; tables?: number; cached?: boolean;
+  summary_ready?: boolean;
 };
 
 /** 錯誤訊息由呼叫端依語言決定；此處僅回傳狀態碼供對應。 */

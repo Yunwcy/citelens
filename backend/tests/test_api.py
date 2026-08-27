@@ -77,3 +77,36 @@ def test_串流問答能跑完整條路徑(lightrag_index, monkeypatch):
     done = events[-1]
     assert "sources" in done and "debug" in done
     assert "declined" in done["debug"]
+
+
+def test_摘要失敗不得讓整份文件被判定為失敗(lightrag_pdf, monkeypatch, tmp_path):
+    """摘要是索引流程裡唯一需要外部服務的一步。
+
+    實測拔網路上傳：解析、切塊、向量化全部成功，只有摘要失敗 ——
+    但當時整個工作被標成 failed，介面顯示「連線錯誤」，
+    看起來像整份文件都沒上傳成功。索引其實已經可以提問了。
+    """
+    import asyncio
+
+    from app.config import settings
+    from app.services import documents
+    from app.summarization import hierarchical
+
+    async def _boom(*a, **kw):
+        raise RuntimeError("Connection error.")
+
+    monkeypatch.setattr(hierarchical, "build", _boom)
+    monkeypatch.setattr(settings, "storage_dir", tmp_path)
+
+    async def run():
+        job = await documents.submit(lightrag_pdf.name, lightrag_pdf.read_bytes())
+        for _ in range(600):
+            if job.done:
+                break
+            await asyncio.sleep(0.5)
+        return job
+
+    job = asyncio.run(run())
+    assert job.error is None, f"摘要失敗不應讓工作失敗：{job.error}"
+    assert job.stage == "ready"
+    assert job.detail.get("summary_ready") is False
