@@ -1,15 +1,16 @@
-"""Demo 前的驗收閘門。全程走 nginx，不走後端埠。
+"""端到端驗收：以真實的 HTTP 請求走完整條路徑。
 
-為什麼要另外做一支：backend/tests 的 55 項全部是 in-process（TestClient），
-**沒有任何一項真的經過 nginx** —— 而 nginx 正是唯一踩過整合坑的地方
-（上傳 413、backend 掛掉但 /health 仍回 200）。單元測試抓不到那種問題。
+單元測試以 TestClient 在同一個行程內執行，繞過了反向代理。
+上傳大小限制、健康檢查的代理設定、SSE 的緩衝行為都只存在於代理層，
+因此本腳本一律連 nginx（:3000），不直接連後端埠。
 
 用法：
-    python scripts/demo_gate.py              # 非破壞性項目
-    python scripts/demo_gate.py --full       # 另含重啟與停用後端（會中斷服務）
-    python scripts/demo_gate.py --cold       # 先 down 再 up，量測冷啟動
+    python scripts/e2e.py                # 非破壞性項目
+    python scripts/e2e.py --generality   # 另以其他文件驗證與文件無關的規則
+    python scripts/e2e.py --full         # 另含重啟與停用後端（會中斷服務）
+    python scripts/e2e.py --cold         # 先 down 再 up，量測冷啟動
 
-任何一項紅燈就不要 freeze code。
+任一項失敗即以非零狀態碼結束，可直接接進 CI。
 """
 from __future__ import annotations
 
@@ -156,8 +157,8 @@ def gate_upload() -> str:
 
 
 def gate_golden(doc_id: str) -> None:
-    """三個官方指定問題。斷言的是內容，不只是「有回答」。"""
-    print("\n【三個官方問題】")
+    """三類代表性查詢。斷言的是內容，不只是「有回答」。"""
+    print("\n【代表性查詢】")
 
     # ① 摘要：關鍵證據不得被改寫成程度副詞
     a = ask(doc_id, "summary this document")
@@ -289,7 +290,7 @@ def gate_health_when_down() -> None:
 def gate_generality(paths: list[Path]) -> None:
     """換一份文件也要成立。
 
-    三個官方問題的斷言綁定 LightRAG 那篇；這一段驗證的是
+    上一段的斷言綁定特定論文的內容；這一段驗證的是
     **與文件無關的規則**：索引得起來、摘要保留數值、表格問題找得到表、
     引用編號合法、脈絡不超標、不存在的問題要拒答。
     """
@@ -339,7 +340,7 @@ def main() -> int:
                     help="另外用其他文件驗證與文件無關的規則")
     args = ap.parse_args()
 
-    print("Demo 驗收閘門　全程走 nginx（:3000）")
+    print("端到端驗收　全程經由 nginx（:3000）")
 
     if args.cold:
         print("\n【冷啟動】")
@@ -362,12 +363,11 @@ def main() -> int:
 
     red = [n for n, ok, _ in results if not ok]
     print(f"\n{'─' * 58}")
-    print(f"{len(results) - len(red)} / {len(results)} 綠燈")
+    print(f"{len(results) - len(red)} / {len(results)} 項通過")
     if red:
-        print("\n紅燈：")
+        print("\n未通過：")
         for n in red:
             print(f"  🔴 {n}")
-        print("\n有紅燈就不要 freeze code。")
     else:
         print("全數通過。")
     return 1 if red else 0

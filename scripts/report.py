@@ -1,13 +1,19 @@
-"""把 storage/metrics.jsonl 整理成報表。
+"""把指標紀錄整理成報表。
+
+容器以具名卷保存資料，主機上的 ./storage 是另一份 —— 直接執行只會讀到
+本機開發時留下的舊紀錄。要對容器內的實際流量出報表，加上 --container。
 
 用法：
-    python scripts/report.py
-    python scripts/report.py --md docs/results/runtime.md
+    python scripts/report.py                                    # 讀本機 storage
+    python scripts/report.py --container                        # 讀執行中的容器
+    python scripts/report.py --container --md docs/results/runtime.md
 """
 from __future__ import annotations
 
 import argparse
+import json
 import statistics
+import subprocess
 import sys
 from pathlib import Path
 
@@ -59,6 +65,19 @@ def build(rows: list[dict]) -> str:
                 f" / {statistics.mean([r.get('completion_tokens', 0) for r in qry]):.0f} out |",
                 f"| 平均每次成本 | US${cost / len(qry):.6f} |",
                 f"| 累計成本 | US${cost:.4f} |", "",
+                "## 回答品質", "", "| 結果 | 次數 |", "|---|---:|"]
+
+        # 引用率的分母排除拒答：文件未涵蓋該問題時，模型應如實說明，
+        # 這類回答本來就沒有可標註的來源，計入會把正確行為算成失敗。
+        answered = [r for r in qry if "cited" in r]
+        declined_n = sum(1 for r in answered if r.get("declined"))
+        cited_n = sum(1 for r in answered if r.get("cited") and not r.get("declined"))
+        uncited_n = len(answered) - cited_n - declined_n
+        rate = f"{cited_n / (cited_n + uncited_n) * 100:.0f}%" if cited_n + uncited_n else "—"
+        out += [f"| 有標註引用 | {cited_n} |",
+                f"| 有作答但未標註引用 | {uncited_n} |",
+                f"| 文件未涵蓋而如實拒答 | {declined_n} |",
+                f"| **有作答時的引用率** | **{rate}** |", "",
                 "## 路由分布", "", "| 路由 | 次數 |", "|---|---:|"]
         routes: dict[str, int] = {}
         for r in qry:
@@ -68,13 +87,26 @@ def build(rows: list[dict]) -> str:
     return "\n".join(out)
 
 
+def read_from_container() -> list[dict]:
+    """由執行中的容器取出指標。"""
+    r = subprocess.run(
+        ["docker", "compose", "exec", "-T", "backend", "cat", "/data/metrics.jsonl"],
+        cwd=Path(__file__).resolve().parents[1], capture_output=True, text=True,
+    )
+    if r.returncode != 0:
+        raise SystemExit(f"無法讀取容器內的指標：{r.stderr.strip()[:200]}")
+    return [json.loads(line) for line in r.stdout.splitlines() if line.strip()]
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--md")
+    ap.add_argument("--container", action="store_true",
+                    help="改讀執行中容器的 /data/metrics.jsonl")
     args = ap.parse_args()
-    rows = metrics.read_all()
+    rows = read_from_container() if args.container else metrics.read_all()
     if not rows:
-        print("尚無指標資料。先執行 scripts/ask.py 產生。")
+        print("尚無指標資料。先執行 scripts/ask.py 或透過介面提問。")
         return
     text = build(rows)
     print(text)
