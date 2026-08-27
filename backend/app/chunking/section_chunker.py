@@ -52,19 +52,48 @@ def _section_aware(sections: list[Section], keep) -> list[Chunk]:
 
 
 def _fixed(sections: list[Section], keep) -> list[Chunk]:
-    """對照組：把全文攤平成一條，純以長度切，不看任何結構。"""
+    """對照組：文獻上的 fixed-size chunking with overlap。
+
+    把全文攤平成一條 token 串，以固定視窗滑動切分，**不看任何結構、
+    也不在段落邊界停下**。視窗之間保留重疊，這是這個作法的標準配置 ——
+    邊界會切斷句子，重疊是用來降低「答案剛好落在切點上」的機率。
+
+    對照組必須是文獻上真正的那個作法，否則消融實驗只是在比較兩個自訂方案。
+    """
     flat = [(b.page, b.text) for sec in sections for b in sec.blocks if keep(b)]
-    return [
-        Chunk(
-            chunk_id=f"f{i:04d}",
-            text=piece,
-            page=page,
-            section_id="",
-            section_title="",
-            n_tokens=tokens.count(piece),
+    if not flat:
+        return []
+
+    limit = settings.chunk_target_tokens
+    stride = max(1, limit - settings.chunk_overlap_tokens)
+
+    # 攤平成單一 token 串，同時記住每個 token 屬於哪一頁，讓引用仍能指到頁碼
+    enc = tokens.encoding()
+    ids: list[int] = []
+    pages: list[int] = []
+    for page, text in flat:
+        piece = enc.encode(text + "\n")
+        ids.extend(piece)
+        pages.extend([page] * len(piece))
+
+    out: list[Chunk] = []
+    for i, start in enumerate(range(0, len(ids), stride)):
+        window = ids[start:start + limit]
+        if not window:
+            break
+        out.append(
+            Chunk(
+                chunk_id=f"f{i:04d}",
+                text=enc.decode(window),
+                page=pages[start],
+                section_id="",
+                section_title="",
+                n_tokens=len(window),
+            )
         )
-        for i, (page, piece) in enumerate(_split_blocks(flat))
-    ]
+        if start + limit >= len(ids):
+            break
+    return out
 
 
 def _split_blocks(blocks: list[tuple[int, str]]) -> list[tuple[int, str]]:

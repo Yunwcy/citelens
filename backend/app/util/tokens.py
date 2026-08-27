@@ -13,6 +13,11 @@ def _encoding():
     return tiktoken.get_encoding("cl100k_base")
 
 
+def encoding():
+    """需要逐 token 操作時使用（例如固定視窗切塊）。"""
+    return _encoding()
+
+
 def count(text: str) -> int:
     return len(_encoding().encode(text))
 
