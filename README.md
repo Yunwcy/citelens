@@ -41,12 +41,12 @@ cp .env.example .env        # 填入 OPENAI_API_KEY
 docker compose up --build
 ```
 
-| 服務 | 位置 |
-|---|---|
-| 介面 | http://localhost:3000 |
-| API | http://localhost:8000 |
-| 指標 | http://localhost:8000/api/metrics |
-| Grafana | http://localhost:3001 |
+| 服務 | 位置 | 用途 |
+|---|---|---|
+| 介面 | http://localhost:3000 | 上傳文件、提問、看引用來源 |
+| API 文件 | http://localhost:8000/docs | 每個端點的參數與回應格式，可直接在頁面上試打 |
+| 指標 | http://localhost:8000/api/metrics | Prometheus 格式的原始數據（查詢次數、延遲、成本、檢索準確度） |
+| Grafana | http://localhost:3001 | 上面那份數據的視覺化儀表板 |
 
 不使用容器時：
 
