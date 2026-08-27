@@ -208,6 +208,12 @@ python scripts/check_docs.py                                 # 文件數字與�
 python scripts/e2e.py --offline --generality --full          # 端到端驗收（經 nginx）
 ```
 
+從零建置驗證（相依是否都有宣告，而非本機剛好有）：
+
+```bash
+bash scripts/verify_clean_build.sh                           # 約 10–20 分鐘
+```
+
 三層互補，缺一層就會漏掉一類問題：
 
 | 層 | 涵蓋 | 抓不到什麼 |
