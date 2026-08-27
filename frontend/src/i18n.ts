@@ -28,6 +28,10 @@ export interface Strings {
   send: string;
   answering: string;
   streamStage: Record<string, string>;
+  summaryPhase: (step: number, label: string, done: number, total: number) => string;
+  summaryStepLabel: Record<string, string>;
+  stripMode: Record<string, string>;
+  declinedBadge: string;
 
   sources: string;
   retrievedPassages: string;
@@ -86,6 +90,13 @@ export const STRINGS: Record<Lang, Strings> = {
     streamStage: {
       retrieving: "檢索中…", packing: "整理片段…", generating: "產生回答…",
     },
+    summaryStepLabel: { map: "逐節摘要", merge: "合併摘要" },
+    summaryPhase: (step, label, done, total) =>
+      `全文摘要 · 步驟 ${step}/2：${label}` + (total > 1 ? `（${done}/${total}）` : "…"),
+    stripMode: {
+      qa: "混合檢索", comparison: "多路檢索", table_lookup: "表格定位", summary: "階層式摘要",
+    },
+    declinedBadge: "文件未涵蓋此問題",
 
     sources: "引用來源",
     retrievedPassages: "檢索到的片段",
@@ -146,6 +157,15 @@ export const STRINGS: Record<Lang, Strings> = {
       retrieving: "Searching…", packing: "Assembling passages…",
       generating: "Writing the answer…",
     },
+    summaryStepLabel: { map: "Section summaries", merge: "Merging" },
+    summaryPhase: (step, label, done, total) =>
+      `Document-wide summary · Step ${step}/2: ${label}` +
+      (total > 1 ? ` (${done}/${total})` : "…"),
+    stripMode: {
+      qa: "Hybrid search", comparison: "Multi-query retrieval",
+      table_lookup: "Table lookup", summary: "Hierarchical summarization",
+    },
+    declinedBadge: "Not covered by this document",
 
     sources: "Sources",
     retrievedPassages: "Retrieved passages",

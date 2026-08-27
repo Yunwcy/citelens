@@ -23,14 +23,16 @@ export type Source = {
 export type Debug = {
   route: string; route_reason: string; entities: string[]; table_id: string | null;
   retrieved: number; packed: number; context_tokens: number; context_budget: number;
-  dropped: string[]; truncated: string[];
+  dropped: string[]; truncated: string[]; declined?: boolean;
+  sections_summarized?: number;
   prompt_tokens: number; completion_tokens: number; cost_usd: number;
   retrieval_ms: number; llm_ms: number; total_ms: number;
 };
 
 export type StreamEvent =
   | { type: "route"; route: string; reason: string; entities: string[]; table_id: string | null }
-  | { type: "stage"; stage: string; packed?: number; tokens?: number; budget?: number }
+  | { type: "stage"; stage: string; packed?: number; tokens?: number; budget?: number;
+      done?: number; total?: number }
   | { type: "token"; text: string }
   | { type: "done"; sources: Source[]; debug: Debug };
 

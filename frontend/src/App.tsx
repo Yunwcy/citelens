@@ -108,17 +108,32 @@ export default function App() {
   async function ask(question: string) {
     if (!activeId) return;
     setBusy(true);
-    setTurns((t) => [...t, { question, answer: "", sources: [], debug: null, stage: null }]);
+    setTurns((t) => [...t, {
+      question, answer: "", sources: [], debug: null,
+      stage: null, progress: null, declined: false,
+    }]);
 
     const patch = (fn: (t: Turn) => Turn) =>
       setTurns((all) => all.map((t, i) => (i === all.length - 1 ? fn(t) : t)));
 
     try {
       for await (const ev of api.askStream(activeId, question)) {
-        if (ev.type === "stage") patch((t) => ({ ...t, stage: ev.stage }));
+        if (ev.type === "stage")
+          patch((t) => ({
+            ...t,
+            stage: ev.stage,
+            // 摘要階段帶進度；一般問答的階段沒有 total，維持既有顯示
+            progress: ev.stage.startsWith("summary_") && ev.total
+              ? { phase: ev.stage.slice("summary_".length),
+                  done: ev.done ?? 0, total: ev.total }
+              : t.progress,
+          }));
         else if (ev.type === "token") patch((t) => ({ ...t, answer: t.answer + ev.text }));
         else if (ev.type === "done")
-          patch((t) => ({ ...t, sources: ev.sources, debug: ev.debug, stage: null }));
+          patch((t) => ({
+            ...t, sources: ev.sources, debug: ev.debug,
+            stage: null, progress: null, declined: ev.debug.declined === true,
+          }));
       }
     } catch (e: any) {
       patch((turn) => ({
@@ -129,6 +144,15 @@ export default function App() {
     }
   }
 
+  /** 標記取材自 PEGA AI 識別的長條＋弧形結構，重新繪製而非沿用原圖。 */
+  const Mark = () => (
+    <svg width="20" height="18" viewBox="0 0 20 18" aria-hidden="true" className="shrink-0">
+      <rect x="0" y="8" width="2.6" height="9" rx="1" fill="#DDBE6E" />
+      <rect x="4" y="4" width="2.6" height="13" rx="1" fill="#DDBE6E" />
+      <path d="M8.4 17V1h1.8a8 8 0 0 1 0 16z" fill="#DDBE6E" />
+    </svg>
+  );
+
   const scrollToSource = (n: number) => {
     document.getElementById(`src-${n}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
   };
@@ -138,13 +162,17 @@ export default function App() {
 
   return (
     <div className="h-full flex flex-col bg-surface">
-      <header className="flex items-baseline gap-2.5 px-4 py-2.5 border-b border-line">
-        <h1 className="text-base font-medium">CiteLens</h1>
-        <span className="text-xs text-ink-soft">{t.subtitle}</span>
+      <header className="flex items-center gap-2.5 px-4 py-2.5 bg-brand text-white">
+        <Mark />
+        <h1 className="text-base font-medium tracking-wide">
+          Cite<span className="text-accent-gold">Lens</span>
+        </h1>
+        <span className="text-xs text-white/55">{t.subtitle}</span>
         <button
           onClick={() => setLang(lang === "zh" ? "en" : "zh")}
-          className="ml-auto rounded-lg border border-line px-2 py-0.5 text-xs
-                     hover:border-accent hover:text-accent-deep transition-colors"
+          className="ml-auto rounded-lg border border-white/25 px-2 py-0.5 text-xs
+                     text-white/80 hover:border-accent-gold hover:text-accent-gold
+                     transition-colors"
           aria-label={lang === "zh" ? "Switch to English" : "切換為中文"}
         >
           {lang === "zh" ? "EN" : "中"}

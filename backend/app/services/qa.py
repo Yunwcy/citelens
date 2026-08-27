@@ -6,10 +6,10 @@
 from __future__ import annotations
 
 import asyncio
+from collections.abc import AsyncIterator, Callable
 import re
 import time
 from dataclasses import asdict, dataclass, field
-from typing import AsyncIterator
 
 from app.config import settings
 from app.llm import client, prompts
@@ -126,6 +126,7 @@ async def answer(
         "prompt_tokens": result.prompt_tokens,
         "completion_tokens": result.completion_tokens,
         "cost_usd": round(result.cost_usd, 6),
+        "declined": declined(result.text),
         "retrieval_ms": round(retrieval_ms, 1),
         "llm_ms": result.latency_ms,
         "total_ms": round((time.perf_counter() - started) * 1000, 1),
@@ -229,13 +230,20 @@ def _table_first(index: DocumentIndex, table_id: str, chunks: list[Chunk]) -> li
     return [full] + [c for c in chunks if c.chunk_id != full.chunk_id]
 
 
-async def _summary(index: DocumentIndex, question: str, r, started: float) -> Answer:
+async def _summary(
+    index: DocumentIndex,
+    question: str,
+    r,
+    started: float,
+    on_progress: Callable[[str, int, int], None] | None = None,
+) -> Answer:
     """摘要走快取，不走檢索。快取依語言分別存放。"""
     lang = language_of(question)
     data = hierarchical.load(index.doc_id, lang)
     cached = data is not None
     if data is None:
-        data = await hierarchical.build(index.doc_id, index.sections, lang)
+        data = await hierarchical.build(index.doc_id, index.sections, lang,
+                                        on_progress=on_progress)
 
     # 摘要沒有可指的片段，但仍應說明涵蓋範圍 ——
     # 「答案附出處」對摘要而言就是「這份摘要讀過哪些章節」。
@@ -250,6 +258,7 @@ async def _summary(index: DocumentIndex, question: str, r, started: float) -> An
         "cached": cached,
         "lang": lang,
         "sections_summarized": len(data.get("section_summaries", [])),
+        "declined": False,
         "n_llm_calls": 0 if cached else data.get("n_llm_calls", 0),
         "prompt_tokens": 0,
         "completion_tokens": 0,
@@ -312,7 +321,25 @@ async def answer_stream(
            "entities": r.entities, "table_id": r.table_id}
 
     if r.name == "summary":
-        res = await _summary(index, question, r, started)
+        # 摘要不走檢索，而是分段摘要再合併。未快取時要跑十幾次模型呼叫，
+        # 把 map-reduce 的進度送到前端，否則使用者面對的是十四秒的空白。
+        events: asyncio.Queue = asyncio.Queue()
+
+        async def _run() -> Answer:
+            try:
+                return await _summary(
+                    index, question, r, started,
+                    on_progress=lambda phase, done, total: events.put_nowait(
+                        {"type": "stage", "stage": f"summary_{phase}",
+                         "done": done, "total": total}),
+                )
+            finally:
+                events.put_nowait(None)
+
+        task = asyncio.create_task(_run())
+        while (ev := await events.get()) is not None:
+            yield ev
+        res = await task
         yield {"type": "token", "text": res.text}
         yield {"type": "done", "sources": [asdict(s) for s in res.sources], "debug": res.debug}
         return
@@ -355,6 +382,7 @@ async def answer_stream(
         # 串流模式取不到 usage，以 tiktoken 估算，欄位語意與非串流一致
         "prompt_tokens": tokens.count(prompt) + tokens.count(system),
         "completion_tokens": tokens.count(text),
+        "declined": declined(text),
         "retrieval_ms": round(retrieval_ms, 1), "llm_ms": llm_ms,
         "total_ms": round((time.perf_counter() - started) * 1000, 1),
     }

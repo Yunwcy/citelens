@@ -13,6 +13,7 @@
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Callable
 import json
 import logging
 import time
@@ -32,12 +33,21 @@ _MAX_GROUP_TOKENS = 3_500      # 超過此長度的一級章節改以其子章�
 _SECTION_SUMMARY_TOKENS = 700  # 每段章節摘要的長度上限
 
 
-async def build(doc_id: str, sections: list[Section], lang: str = "zh") -> dict:
+async def build(
+    doc_id: str,
+    sections: list[Section],
+    lang: str = "zh",
+    on_progress: Callable[[str, int, int], None] | None = None,
+) -> dict:
     """產生並快取摘要。
 
     章節摘要與語言無關，只做一次；最終整合依語言各自產生並快取。
     完整重做一次要八次模型呼叫、約十四秒，只重做整合則是一次、約三秒。
+
+    on_progress 讓呼叫端把 map-reduce 的進度轉成畫面上的階段訊息 ——
+    十四秒的空白畫面會被當成當機，而這正好是最值得展示的一段。
     """
+    note = on_progress or (lambda *_: None)
     path = settings.storage_dir / doc_id / "summary.json"
     if path.exists():
         data = json.loads(path.read_text(encoding="utf-8"))
@@ -47,7 +57,9 @@ async def build(doc_id: str, sections: list[Section], lang: str = "zh") -> dict:
         if lang in data.get("summaries", {}):
             return {**data, "summary": data["summaries"][lang], "lang": lang}
         # 章節摘要已存在，只需補做該語言的整合
+        note("merge", 0, 1)
         data["summaries"][lang] = await _reduce(data["section_summaries"], lang)
+        note("merge", 1, 1)
         path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
         return {**data, "summary": data["summaries"][lang], "lang": lang}
 
@@ -58,13 +70,25 @@ async def build(doc_id: str, sections: list[Section], lang: str = "zh") -> dict:
     groups = _group_by_top_level(sections)
     log.info("摘要 %s：%d 個一級章節", doc_id, len(groups))
 
-    results = await asyncio.gather(*(_map_one(g[0], g[1]) for g in groups))
+    done = 0
+    note("map", 0, len(groups))
+
+    async def _tracked(g: tuple[str, str, int]) -> str:
+        nonlocal done
+        summary = await _map_one(g[0], g[1])
+        done += 1
+        note("map", done, len(groups))
+        return summary
+
+    results = await asyncio.gather(*(_tracked(g) for g in groups))
     section_summaries = [
         {"section": g[0], "page": g[2], "summary": summary}
         for g, summary in zip(groups, results)
     ]
 
+    note("merge", 0, 1)
     final = await _reduce(section_summaries, lang)
+    note("merge", 1, 1)
 
     elapsed = time.perf_counter() - started
     data = {
