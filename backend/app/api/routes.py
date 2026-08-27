@@ -31,6 +31,48 @@ class QueryRequest(BaseModel):
     top_k: int | None = Field(default=None, ge=1, le=30)
 
 
+# 回應也要有型別。只標 -> dict 的話，自動產生的 API 文件只會顯示
+# additionalProp1 這個「內容不明的物件」佔位符 —— 等於沒有文件。
+class JobAccepted(BaseModel):
+    """上傳已受理。索引在背景進行，用 job_id 訂閱進度。"""
+    job_id: str
+    doc_id: str
+    stage: str
+
+
+class DocSummary(BaseModel):
+    """文件清單的單筆。filename 優先取解析出的論文標題，取不到才用檔名。"""
+    doc_id: str
+    filename: str
+    source_name: str
+    uploaded: str | None = None
+    pages: int | None = None
+    chunks: int | None = None
+    tables: int | None = None
+    url: str | None = None
+    section_source: str | None = None
+    has_summary: bool
+
+
+class TableInfo(BaseModel):
+    """validated 為 False 者已清空儲存格、退回整表原文，note 說明原因。"""
+    table_id: str
+    page: int
+    caption: str = ""
+    kind: str
+    rows: int
+    columns: int
+    validated: bool
+    note: str = ""
+
+
+class DocDetail(BaseModel):
+    doc_id: str
+    meta: dict
+    tables: list[TableInfo]
+    quick_questions: list[str]
+
+
 def _sse(payload: dict) -> str:
     return f"data: {json.dumps(payload, ensure_ascii=False)}\n\n"
 
@@ -71,7 +113,7 @@ async def metrics() -> Response:
 # --- 文件 -------------------------------------------------------------------
 
 @router.post("/documents", status_code=202)
-async def upload(file: UploadFile = File(...)) -> dict:
+async def upload(file: UploadFile = File(...)) -> JobAccepted:
     if not (file.filename or "").lower().endswith(".pdf"):
         raise HTTPException(400, "只接受 PDF 檔")
 
@@ -87,7 +129,7 @@ async def upload(file: UploadFile = File(...)) -> dict:
 
 
 @router.post("/documents/from-url", status_code=202)
-async def upload_from_url(req: UrlRequest) -> dict:
+async def upload_from_url(req: UrlRequest) -> JobAccepted:
     """由網址匯入。作業指定的文件本身就是一個網址，貼上比開檔案視窗自然。"""
     from app.services.fetcher import UnsafeUrl
 
@@ -101,12 +143,12 @@ async def upload_from_url(req: UrlRequest) -> dict:
 
 
 @router.get("/documents")
-async def list_docs() -> list[dict]:
+async def list_docs() -> list[DocSummary]:
     return documents.list_documents()
 
 
 @router.get("/documents/{doc_id}")
-async def get_doc(doc_id: str, lang: str = "zh") -> dict:
+async def get_doc(doc_id: str, lang: str = "zh") -> DocDetail:
     try:
         idx = await documents.get_index(doc_id)
     except KeyError:
