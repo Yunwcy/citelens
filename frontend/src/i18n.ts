@@ -33,6 +33,7 @@ export interface Strings {
   stripMode: Record<string, string>;
   declinedBadge: string;
   truncatedBadge: string;
+  streamErrorBadge: string;
 
   sources: string;
   retrievedPassages: string;
@@ -99,6 +100,7 @@ export const STRINGS: Record<Lang, Strings> = {
     },
     declinedBadge: "文件未涵蓋此問題",
     truncatedBadge: "答案達長度上限，內容可能不完整",
+    streamErrorBadge: "與模型的連線中斷，答案並未寫完",
 
     sources: "引用來源",
     retrievedPassages: "檢索到的片段",
@@ -169,6 +171,7 @@ export const STRINGS: Record<Lang, Strings> = {
     },
     declinedBadge: "Not covered by this document",
     truncatedBadge: "Answer hit the length limit and may be incomplete",
+    streamErrorBadge: "The connection to the model dropped — this answer is unfinished",
 
     sources: "Sources",
     retrievedPassages: "Retrieved passages",

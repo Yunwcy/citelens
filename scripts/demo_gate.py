@@ -286,10 +286,57 @@ def gate_health_when_down() -> None:
     check("backend 復原", True)
 
 
+def gate_generality(paths: list[Path]) -> None:
+    """換一份文件也要成立。
+
+    三個官方問題的斷言綁定 LightRAG 那篇；這一段驗證的是
+    **與文件無關的規則**：索引得起來、摘要保留數值、表格問題找得到表、
+    引用編號合法、脈絡不超標、不存在的問題要拒答。
+    """
+    print("\n【其他文件】")
+    for path in paths:
+        print(f"\n  ── {path.name} ──")
+        try:
+            doc_id = upload(path)
+        except Exception as exc:                            # noqa: BLE001
+            check(f"{path.name} 索引", False, str(exc)[:60])
+            continue
+        info = httpx.get(f"{BASE}/api/documents/{doc_id}", timeout=30).json()
+        n_tab = len(info["tables"])
+        bad_tab = [t for t in info["tables"] if t["kind"] == "data" and not t["validated"]]
+        check(f"{path.name} 索引完成", True,
+              f"{n_tab} 張表 · {len(info['quick_questions'])} 個快速提問")
+        check(f"{path.name} 數值表全部通過驗證", not bad_tab,
+              f"{len(bad_tab)} 張未通過" if bad_tab else "全數通過")
+
+        s = ask(doc_id, "摘要這份文件")
+        check(f"{path.name} 摘要可產生", len(s["text"]) > 200, f"{len(s['text'])} 字")
+        check(f"{path.name} 摘要保留數字", bool(re.search(r"\d", s["text"])))
+
+        q = ask(doc_id, "文中的表格呈現了哪些數據？")
+        cited = {int(x) for x in re.findall(r"\[(\d+)\]", q["text"])}
+        packed = q["debug"].get("packed", 0)
+        check(f"{path.name} 引用編號合法",
+              all(1 <= c <= max(packed, 1) for c in cited), f"{sorted(cited)} / {packed} 段")
+        check(f"{path.name} 脈絡未超標",
+              q["debug"].get("context_tokens", 0) <= q["debug"].get("context_budget", 7000),
+              f"{q['debug'].get('context_tokens')} / {q['debug'].get('context_budget')}")
+        check(f"{path.name} 答案未被截斷", not q["debug"].get("answer_truncated"))
+
+        off = ask(doc_id, "Who is the CEO of OpenAI?")
+        declined = off["debug"].get("declined") or re.search(
+            r"(未提及|沒有提到|not (mentioned|covered|found)|does not (mention|contain))",
+            off["text"])
+        check(f"{path.name} 文件外問題要拒答", bool(declined),
+              "已拒答" if declined else off["text"][:50])
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--full", action="store_true", help="含重啟與停用後端（會中斷服務）")
     ap.add_argument("--cold", action="store_true", help="先 down 再 up，量測冷啟動")
+    ap.add_argument("--generality", action="store_true",
+                    help="另外用其他文件驗證與文件無關的規則")
     args = ap.parse_args()
 
     print("Demo 驗收閘門　全程走 nginx（:3000）")
@@ -307,6 +354,8 @@ def main() -> int:
     gate_golden(doc_id)
     gate_generic_comparison(doc_id)
     gate_isolation(doc_id)
+    if args.generality:
+        gate_generality([p for p in sorted(DOCS.glob("*.pdf")) if "2410.05779" not in p.name])
     if args.full:
         gate_persistence()
         gate_health_when_down()

@@ -15,6 +15,8 @@ export type Turn = {
   declined: boolean;
   /** 答案撞到輸出長度上限而被切斷。 */
   truncated: boolean;
+  /** 與模型的串流中途斷線。 */
+  broken: boolean;
 };
 
 type Props = {
@@ -66,6 +68,12 @@ export function Chat({ turns, quickQuestions, ready, busy, t, onAsk, onCite }: P
 
             {turn.answer && (
               <div className="max-w-[92%] leading-relaxed">
+                {turn.broken && (
+                  <p className="mb-2 inline-flex items-center gap-1.5 rounded-lg border
+                                border-red-300 bg-red-50 px-2 py-1 text-xs text-red-800">
+                    <span aria-hidden="true">◍</span>{t.streamErrorBadge}
+                  </p>
+                )}
                 {turn.truncated && (
                   <p className="mb-2 inline-flex items-center gap-1.5 rounded-lg border
                                 border-amber-300 bg-amber-50 px-2 py-1 text-xs text-amber-900">

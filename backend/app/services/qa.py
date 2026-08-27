@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import AsyncIterator, Callable
+import logging
 import re
 import time
 from dataclasses import asdict, dataclass, field
@@ -54,6 +55,9 @@ def declined(text: str) -> bool:
     整體仍是有實質內容的作答。
     """
     return bool(_DECLINED.search(text)) and len(text) < 400
+
+
+log = logging.getLogger(__name__)
 
 
 @dataclass(slots=True)
@@ -422,9 +426,17 @@ async def answer_stream(
     llm_started = time.perf_counter()
     parts: list[str] = []
     llm_meta: dict = {}
-    async for piece in client.generate_stream(prompt, system=system, meta=llm_meta):
-        parts.append(piece)
-        yield {"type": "token", "text": piece}
+    # 上游把串流切一半是會真的發生的（實測遇過一次 RemoteProtocolError）。
+    # 讓例外往上冒的話，SSE 連線直接斷掉、done 永遠不會送出，
+    # 前端只剩半段文字而且看起來像是「答案比較短」—— 又一個不會報錯的錯。
+    # 改為記下來並照常送出 done，讓來源、用量與中斷標記都能到前端。
+    try:
+        async for piece in client.generate_stream(prompt, system=system, meta=llm_meta):
+            parts.append(piece)
+            yield {"type": "token", "text": piece}
+    except Exception as exc:                                # noqa: BLE001
+        llm_meta["stream_error"] = type(exc).__name__
+        log.warning("模型串流中斷：%s", exc)
 
     text = "".join(parts)
     llm_ms = int((time.perf_counter() - llm_started) * 1000)
@@ -441,6 +453,8 @@ async def answer_stream(
         "declined": declined(text),
         # 撞到輸出長度上限 —— 答案是被切斷的，不是寫完的
         "answer_truncated": llm_meta.get("finish_reason") == "length",
+        # 上游中斷 —— 答案是斷的，不是寫完的
+        "stream_error": llm_meta.get("stream_error"),
         "retrieval_ms": round(retrieval_ms, 1), "llm_ms": llm_ms,
         "total_ms": round((time.perf_counter() - started) * 1000, 1),
     }

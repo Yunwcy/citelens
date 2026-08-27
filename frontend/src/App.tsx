@@ -124,7 +124,7 @@ export default function App() {
     setBusy(true);
     setTurns((t) => [...t, {
       question, answer: "", sources: [], debug: null,
-      stage: null, progress: null, declined: false, truncated: false,
+      stage: null, progress: null, declined: false, truncated: false, broken: false,
     }]);
 
     const patch = (fn: (t: Turn) => Turn) =>
@@ -148,11 +148,14 @@ export default function App() {
             ...t, sources: ev.sources, debug: ev.debug,
             stage: null, progress: null, declined: ev.debug.declined === true,
             truncated: ev.debug.answer_truncated === true,
+            broken: !!ev.debug.stream_error,
           }));
       }
     } catch (e: any) {
       patch((turn) => ({
-        ...turn, answer: turn.answer || t.answerFailed(describe(e)), stage: null,
+        // 有部分文字時也要標明中斷 —— 否則半截答案看起來像是「比較短的回答」
+        ...turn, answer: turn.answer || t.answerFailed(describe(e)),
+        stage: null, progress: null, broken: true,
       }));
     } finally {
       setBusy(false);

@@ -48,6 +48,20 @@ docker compose up --build
 | 指標 | http://localhost:8000/api/metrics | Prometheus 格式的原始數據（查詢次數、延遲、成本、檢索準確度） |
 | Grafana | http://localhost:3001 | 上面那份數據的視覺化儀表板 |
 
+### 從零重現（模擬他人 clone）
+
+```bash
+git clone https://github.com/Yunwcy/citelens.git && cd citelens
+cp .env.example .env          # 填入自己的 OPENAI_API_KEY
+docker compose up -d --build  # 四個服務一次起來
+bash scripts/fetch_test_docs.sh          # 下載四篇測試論文
+python -m venv .venv && .venv/bin/pip install -r backend/requirements.txt
+.venv/bin/python scripts/demo_gate.py --generality   # 端到端驗收，全程走 nginx
+```
+
+`demo_gate.py` 走的是 nginx（:3000）而非後端埠，因為只有這條路徑才會遇到
+上傳上限、健康檢查代理等問題；`--full` 另含重啟與停用後端的驗證。
+
 不使用容器時：
 
 ```bash
