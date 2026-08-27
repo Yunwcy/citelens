@@ -191,6 +191,14 @@ def gate_golden(doc_id: str) -> None:
         if re.search(r"comprehensiveness|完整性", sent, re.I)
         and re.search(r"(all (four )?datasets|所有(四個)?資料集|全面)", sent, re.I)
     ]
+    # 勝率表是兩兩對比，配對的兩數必相加為 100 ——
+    # 相加不等於 100 就代表兩個數字取自不同的基線區塊。
+    pairs = [(float(m.group(1)), float(m.group(2))) for m in re.finditer(
+        r"(\d+\.\d+)%[^。\n]{0,26}?(?:而|vs\.?|versus)[^。\n]{0,26}?(\d+\.\d+)%", b["text"])]
+    off = [(a, c) for a, c in pairs if abs(a + c - 100) >= 0.6]
+    check("② 比較　配對數值取自同一列", not off,
+          f"{len(pairs)} 組配對" + (f"　錯配：{off}" if off else "　全部相加為 100%"))
+
     check("② 比較　Comprehensiveness 未被誤稱為全勝", not bad_claim,
           (bad_claim[0].strip()[:70] + "…") if bad_claim else "已正確限定")
 
@@ -219,6 +227,23 @@ def gate_golden(doc_id: str) -> None:
         budget = res["debug"].get("context_budget", 7000)
         used = res["debug"].get("context_tokens", 0)
         check(f"{tag} 脈絡未超標", used <= budget, f"{used} / {budget}")
+
+
+def gate_generic_comparison(doc_id: str) -> None:
+    """未點名對象的比較問法。
+
+    「比較文中提到的方法」抽不出實體，區塊過濾因此不生效，
+    四個基線區塊全部留在脈絡裡 —— 實測模型會把 LightRAG 對 NaiveRAG 的
+    勝率，拿去和 GraphRAG 的數字並列，四組配對全錯。
+    """
+    print("\n【未點名對象的比較】")
+    r = ask(doc_id, "比較文中提到的方法")
+    pairs = [(float(m.group(1)), float(m.group(2))) for m in re.finditer(
+        r"(\d+\.\d+)%[^。\n]{0,26}?(?:而|vs\.?|versus)[^。\n]{0,26}?(\d+\.\d+)%", r["text"])]
+    off = [(a, c) for a, c in pairs if abs(a + c - 100) >= 0.6]
+    check("配對數值取自同一列", not off,
+          f"{len(pairs)} 組配對" + (f"　錯配：{off}" if off else "　全部相加為 100%"))
+    check("有標註引用", bool(re.findall(r"\[\d+\]", r["text"])))
 
 
 def gate_isolation(doc_id: str) -> None:
@@ -280,6 +305,7 @@ def main() -> int:
     gate_services()
     doc_id = gate_upload()
     gate_golden(doc_id)
+    gate_generic_comparison(doc_id)
     gate_isolation(doc_id)
     if args.full:
         gate_persistence()

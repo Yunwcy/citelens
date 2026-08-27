@@ -123,6 +123,8 @@ def _table_chunks(tables: list[Table], sections: list[Section]) -> list[Chunk]:
         # 由分隔列宣告，模型讀到幾列之後就追蹤不到，會把某一欄的值
         # 掛到另一欄的標題下。逐格自我描述則沒有這個問題。
         body = "\n".join(table_extractor.linearize(t)) if t.rows else t.markdown
+        if t.rows and table_extractor.is_pairwise(t):
+            body = f"{table_extractor.PAIRWISE_WARNING}\n{body}"
 
         out.append(
             Chunk(

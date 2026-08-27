@@ -101,6 +101,8 @@ async def answer(
         chunks = _drop_unrelated_table_rows(chunks, r.entities)
     scores = {index.chunk(h.index).chunk_id: h.score for h in hits}
     ctx = pack(chunks, all_chunks=index.chunks)
+    if r.name == "comparison":
+        ctx = _focus_table_blocks(ctx, r.entities)
 
     route = r.name
     system = prompts.COMPARISON_SYSTEM if route == "comparison" else prompts.ANSWER_SYSTEM
@@ -192,6 +194,48 @@ def _multi_search(index: DocumentIndex, queries: list[str], top_k: int | None) -
     )
 
 
+def _focus_table_blocks(ctx, entities: list[str]):
+    """比較類問題：整表片段只保留被點名對象的那些列。
+
+    勝率表的每一列是「LightRAG 對某一個基準方法」的兩兩對比。
+    整張 16 列的表放進脈絡時，模型會把「對 NaiveRAG 的 61.6%」
+    和「對 GraphRAG 那一列的 51.6%」並列 —— 兩個數字各自都對，
+    配在一起卻是錯的，而且相加為 113.2%。
+
+    提示詞講過同一件事，錯配率從 6/6 降到 1/6 但沒有歸零。
+    與其反覆叮嚀，不如**不要把不相關的列送進去**：
+    問「LightRAG 與 GraphRAG 的差別」時，NaiveRAG 那些列本來就不該出現。
+    """
+    if not entities:
+        return ctx
+    low = [e.lower() for e in entities]
+    for i, (n, chunk, shown) in enumerate(ctx.blocks):
+        if chunk.kind != "table_full":
+            continue
+        lines = shown.split("\n")
+
+        def _label(line: str) -> str | None:
+            """列標題＝『】』與『：』之間那段，例如「GraphRAG / Comprehensiveness」。
+
+            必須只比對列標題，不能比對整行 —— 每一行的欄名都含 LightRAG，
+            比對整行會讓所有列都通過，等於沒有過濾。
+            """
+            if "】" not in line or "：" not in line:
+                return None
+            return line.split("】", 1)[1].split("：", 1)[0].lower()
+
+        labelled = [ln for ln in lines if _label(ln) is not None]
+        keep = [ln for ln in lines
+                if _label(ln) is None or any(e in _label(ln) for e in low)]
+        # 全部被濾掉，或本來就沒有可辨識的列 —— 維持原樣，寧可多給也不要給空表
+        kept_rows = [ln for ln in keep if _label(ln) is not None]
+        # 全部被濾掉，或本來就沒有可辨識的列 —— 維持原樣，寧可多給也不要給空表
+        if not labelled or not kept_rows or len(kept_rows) == len(labelled):
+            continue
+        ctx.blocks[i] = (n, chunk, "\n".join(keep))
+    return ctx
+
+
 def _drop_unrelated_table_rows(chunks: list[Chunk], entities: list[str]) -> list[Chunk]:
     """比較類問題：移除未提及任一被比較對象的表格列。
 
@@ -246,11 +290,21 @@ async def _summary(
 
     # 摘要沒有可指的片段，但仍應說明涵蓋範圍 ——
     # 「答案附出處」對摘要而言就是「這份摘要讀過哪些章節」。
-    sources = [
-        Source(n=i + 1, page=s.get("page", 0), section=s["section"], kind="summary",
-               chunk_id=f"sum-{i:02d}", score=0.0, text=s["summary"][:600])
-        for i, s in enumerate(data.get("section_summaries", []))
-    ]
+    #
+    # 展開後顯示的是**文件原文**，不是那一節的生成摘要：
+    # 面板寫的是「點擊可展開原文」，給出中文摘要就是名實不符 ——
+    # 使用者要查核的是來源長什麼樣，不是再看一次模型寫的東西。
+    originals = {sec.title: sec.text for sec in index.sections}
+    sources = []
+    for i, s in enumerate(data.get("section_summaries", [])):
+        # 摘要的 map 單位可能是「父節 · 子節」合併而成，逐段找回原文
+        parts = [originals[t] for t in s["section"].split(" · ") if t in originals]
+        raw = "\n".join(parts) or s["summary"]
+        sources.append(
+            Source(n=i + 1, page=s.get("page", 0), section=s["section"], kind="summary",
+                   chunk_id=f"sum-{i:02d}", score=0.0,
+                   text=" ".join(raw.split())[:600])
+        )
     debug = {
         "route": "summary",
         "route_reason": r.reason,
@@ -355,6 +409,8 @@ async def answer_stream(
         chunks = _drop_unrelated_table_rows(chunks, r.entities)
     scores = {index.chunk(h.index).chunk_id: h.score for h in hits}
     ctx = pack(chunks, all_chunks=index.chunks)
+    if r.name == "comparison":
+        ctx = _focus_table_blocks(ctx, r.entities)
     yield {"type": "stage", "stage": "packing",
            "packed": len(ctx.blocks), "tokens": ctx.used_tokens, "budget": ctx.budget}
 

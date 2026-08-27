@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import * as api from "./api";
 import { STRINGS, detectLang, type Lang } from "./i18n";
 import { Chat, type Turn } from "./components/Chat";
@@ -14,16 +14,30 @@ export default function App() {
   const t = STRINGS[lang];
   const [documents, setDocuments] = useState<api.DocSummary[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
+  // 串流回呼在非同步中執行，必須讀取當下的選取，不能捕捉舊值
+  const activeIdRef = useRef<string | null>(null);
   // 進行中的索引任務獨立於選取狀態：使用者在處理期間切換文件時，
   // 任務仍要繼續追蹤，卡片也不該消失。
   const [job, setJob] = useState<Job | null>(null);
   const [ready, setReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [quick, setQuick] = useState<string[]>([]);
-  const [turns, setTurns] = useState<Turn[]>([]);
+  // 對話依文件保存。切換文件時清空會讓誤觸側欄＝刪除紀錄，
+  // 而使用者常在讀答案時順手點到另一份文件。
+  const [history, setHistory] = useState<Record<string, Turn[]>>({});
+  const turns = activeId ? history[activeId] ?? [] : [];
+  const setTurns = useCallback((fn: Turn[] | ((prev: Turn[]) => Turn[])) => {
+    setHistory((all) => {
+      const id = activeIdRef.current;
+      if (!id) return all;
+      const prev = all[id] ?? [];
+      return { ...all, [id]: typeof fn === "function" ? fn(prev) : fn };
+    });
+  }, []);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => { localStorage.setItem(LANG_KEY, lang); }, [lang]);
+  useEffect(() => { activeIdRef.current = activeId; }, [activeId]);
 
   const refresh = useCallback(async () => {
     const docs = await api.listDocuments();
@@ -46,7 +60,7 @@ export default function App() {
 
   async function select(id: string) {
     setActiveId(id);
-    setTurns([]);
+    activeIdRef.current = id;
     setReady(false);
     try {
       const doc = await api.getDocument(id, lang);

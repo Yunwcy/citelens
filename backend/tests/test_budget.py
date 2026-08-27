@@ -69,3 +69,23 @@ def test_沒有整表時逐列片段仍保留():
 def test_引用編號連續且從一開始():
     ctx = pack([_chunk(f"c{i}", 100) for i in range(5)])
     assert [n for n, _, _ in ctx.blocks] == [1, 2, 3, 4, 5]
+
+
+def test_比較類問題的整表只保留被點名的列(lightrag):
+    """勝率表每一列是對「單一」基準方法的兩兩對比。
+
+    整張 16 列送進脈絡時，模型會把「對 NaiveRAG 的 61.6%」和
+    「對 GraphRAG 那一列的 51.6%」並列 —— 相加 113.2%，兩個數字
+    各自都對，配在一起卻是錯的。不相關的列本來就不該出現。
+    """
+    from app.retrieval.budget import pack
+    from app.services.qa import _focus_table_blocks
+
+    full = [c for c in lightrag.chunks if c.kind == "table_full" and c.meta["table_id"] == "T1"]
+    ctx = _focus_table_blocks(pack(full), ["LightRAG", "GraphRAG"])
+    shown = ctx.blocks[0][2]
+
+    rows = [ln for ln in shown.split("\n") if "】" in ln]
+    assert rows, "整表列全被濾掉了"
+    assert all("GraphRAG" in r for r in rows), "留下了非 GraphRAG 區塊的列"
+    assert "兩兩對比" in shown, "警語不應被濾掉"

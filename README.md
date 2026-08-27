@@ -125,7 +125,7 @@ python scripts/eval.py --md docs/results/retrieval.md        # 檢索、表格�
 python scripts/loadtest.py --md docs/results/load.md         # 併發
 python scripts/bench_embedding.py onnx e5-small bge-zh zh    # 向量化模型選型
 python scripts/report.py --md docs/results/runtime.md        # 執行指標
-cd backend && python -m pytest tests -q                      # 56 項測試
+cd backend && python -m pytest tests -q                      # 57 項測試
 ```
 
 ## 對外介面

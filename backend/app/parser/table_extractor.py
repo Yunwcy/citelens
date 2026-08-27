@@ -26,6 +26,7 @@ _COL_GAP = 6.0            # 大於此間距視為換欄
 _CLUSTER_GAP = 150.0      # 線條間距超過此值視為不同表格
 _MIN_RULES = 3            # booktabs 至少有 top / mid / bottom
 _CAPTION_WINDOW = 90.0    # 在表格上方多少距離內尋找標號
+_PERCENT = re.compile(r"(\d+(?:\.\d+)?)%")
 _NUMBER = re.compile(r"\d+(?:[.,]\d+)?")
 _CAPTION = re.compile(r"(?:Table|TABLE|表)\s*(\d+)\s*[:.、]\s*(.*)", re.S)
 
@@ -398,6 +399,47 @@ def _validate(page, x0, y0, x1, y1, table: Table) -> tuple[bool, str]:
     if len(table.cells) != n_values:
         return False, f"鍵不唯一：{n_values} 個值只留下 {len(table.cells)} 個"
     return True, "數值守恆、鍵唯一"
+
+
+def _pairwise_note(vals: dict[str, str]) -> str:
+    """勝率表的每一列常是兩兩對比，同一組的兩個數字相加為 100%。
+
+    不講明的話，模型會把「LightRAG 對 NaiveRAG 的 83.6%」拿去和
+    「GraphRAG 對 LightRAG 的 48.4%」並列 —— 兩個數字各自都對，
+    配在一起卻是錯的，而且看起來完全合理。實測四組配對全錯。
+
+    因此在列尾直接寫明這是兩兩對比，讓這一列自己說明它的數字怎麼讀。
+    """
+    groups: dict[str, list[float]] = {}
+    for col, val in vals.items():
+        m = _PERCENT.fullmatch(val.strip())
+        if not m:
+            return ""
+        groups.setdefault(col.split(" / ")[0], []).append(float(m.group(1)))
+    pairs = [v for v in groups.values() if len(v) == 2]
+    if not pairs or len(pairs) != len(groups):
+        return ""
+    if not all(abs(sum(v) - 100) < 0.6 for v in pairs):
+        return ""
+    return "PAIRWISE"
+
+
+def is_pairwise(table: Table) -> bool:
+    """整張表的每一列都是兩兩對比（同組兩數相加為 100%）。
+
+    註記放在整表開頭一次，不放在每一列末尾 —— 實測放在 16 列的行尾時，
+    模型照樣把「LightRAG 對 NaiveRAG 的 83.6%」與「GraphRAG 的 48.4%」並列。
+    埋在長列尾端的限制等於沒有寫，而且重複 16 次還多花 token。
+    """
+    return bool(table.rows) and all(_pairwise_note(v) for _, v in table.rows)
+
+
+PAIRWISE_WARNING = (
+    "⚠ 本表為兩兩對比：每一列只描述 LightRAG 與該列指定的**單一**對手，"
+    "同一資料集內的兩個數值相加為 100%。"
+    "比較兩個方法時，兩個數字必須取自**同一列** —— "
+    "不可把「對 A 那一列的數值」與「對 B 那一列的數值」並列。"
+)
 
 
 def linearize(table: Table) -> list[str]:
