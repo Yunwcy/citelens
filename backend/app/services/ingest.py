@@ -54,8 +54,44 @@ def ingest(
             sections, strategy, exclude=_in_table(tables)
         )
         chunks.extend(_table_chunks(tables, sections))
+        info = _doc_info_chunk(prof, sections)
+        if info is not None:
+            chunks.insert(0, info)
 
         return IngestResult(prof, sections, tables, chunks)
+
+
+def _doc_info_chunk(prof: DocumentProfile, sections: list[Section]) -> Chunk | None:
+    """把標題、作者、來源整理成一段可被檢索的敘述。
+
+    這些資訊原本以「一行一個人名」的形式散落在首頁，語意訊號極弱 ——
+    問「這篇論文的作者是誰」時完全檢索不到。
+    寫成「標題是…、作者為…」的句子後才有得比對，
+    與表格逐列線性化是同一個原理：讓資料自己說明自己是什麼。
+    """
+    front = next((s for s in sections if s.title in ("Abstract", "Front matter")), None)
+    if front is None and not prof.title:
+        return None
+
+    parts = []
+    if prof.title:
+        parts.append(f"文件標題（Title）：{prof.title}")
+    if front is not None:
+        head = " ".join(front.text.split())[:600]
+        parts.append(f"文件開頭（作者、單位、摘要 / authors, affiliations, abstract）：{head}")
+    parts.append(f"共 {prof.n_pages} 頁，{len(sections)} 個章節。")
+
+    text = "\n".join(parts)
+    return Chunk(
+        chunk_id="doc-info",
+        text=text,
+        page=1,
+        section_id=front.id if front else "",
+        section_title=front.title if front else "Front matter",
+        kind="text",
+        n_tokens=tokens.count(text),
+        meta={"doc_info": True},
+    )
 
 
 def _in_table(tables: list[Table]):

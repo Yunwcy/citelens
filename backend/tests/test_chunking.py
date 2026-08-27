@@ -29,3 +29,28 @@ def test_目標章節落在正確頁次(lightrag):
     sec = next(s for s in lightrag.sections if "Ablation" in s.title)
     pages = {b.page for b in sec.blocks}
     assert 8 in pages or sec.page_start <= 8
+
+
+def test_第一節之前的內容也要入索引(all_pdfs):
+    """學術論文的標題、作者與摘要都落在第一節之前。
+
+    直接跳過等於這些內容完全不進索引 —— 實測四篇論文中有三篇的摘要因此遺失，
+    而摘要往往是整份文件資訊密度最高的一段。
+    """
+    from app.services.ingest import ingest
+
+    for path in all_pdfs:
+        res = ingest(path)
+        assert res.sections[0].title in ("Abstract", "Front matter"), (
+            f"{path.name} 的第一節是 {res.sections[0].title}，第一節之前的內容可能被丟棄"
+        )
+
+
+def test_文件資訊片段可被檢索(lightrag):
+    """標題與作者原本以「一行一個人名」的形式散落，語意訊號極弱。
+
+    整理成敘述句後才檢索得到 —— 與表格逐列線性化是同一個原理。
+    """
+    info = [c for c in lightrag.chunks if c.meta.get("doc_info")]
+    assert len(info) == 1
+    assert "Title" in info[0].text or "標題" in info[0].text

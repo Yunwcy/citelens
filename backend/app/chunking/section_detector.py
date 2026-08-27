@@ -13,6 +13,7 @@ from app.models import Block, DocumentProfile, Section
 from app.parser.pdf_parser import ParsedPdf
 
 _MIN_SECTIONS = 3          # 少於此數視為該級失敗，往下一級
+_ABSTRACT = re.compile(r"^\s*abstract\b|^\s*摘\s*要", re.I)
 _MAX_HEADING_CHARS = 90
 
 # 編號標題的多種寫法。順序無關，全部試過取聯集。
@@ -120,9 +121,15 @@ def _build(found: list[tuple[float, str, int]]) -> list[Section]:
 
 
 def _assign_blocks(pdf: ParsedPdf, sections: list[Section]) -> None:
-    """把文字區塊分配到所屬章節，並濾掉頁首頁尾。"""
+    """把文字區塊分配到所屬章節，並濾掉頁首頁尾。
+
+    第一個章節之前的區塊會另建一節收納。學術論文的標題、作者與**摘要**
+    都落在第一節之前 —— 直接跳過等於這些內容完全不進索引。
+    實測四篇論文中有三篇的摘要因此遺失，而摘要往往是資訊密度最高的一段。
+    """
     blocks = pdf.blocks()
     noise = _running_headers(blocks, pdf.n_pages)
+    front: list[Block] = []
 
     i = 0
     for b in blocks:
@@ -132,6 +139,16 @@ def _assign_blocks(pdf: ParsedPdf, sections: list[Section]) -> None:
             i += 1
         if b.order >= sections[i].start_order:
             sections[i].blocks.append(b)
+        elif i == 0:
+            front.append(b)
+
+    if front:
+        title = "Abstract" if any(_ABSTRACT.match(b.text) for b in front) else "Front matter"
+        sections.insert(0, Section(
+            id="s000f", title=title, level=1,
+            start_order=front[0].order, end_order=sections[0].start_order,
+            blocks=front,
+        ))
 
 
 def _running_headers(blocks: list[Block], n_pages: int, ratio: float = 0.3) -> set[str]:
