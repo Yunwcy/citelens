@@ -230,11 +230,12 @@ def _table_first(index: DocumentIndex, table_id: str, chunks: list[Chunk]) -> li
 
 
 async def _summary(index: DocumentIndex, question: str, r, started: float) -> Answer:
-    """摘要走快取，不走檢索。"""
-    data = hierarchical.load(index.doc_id)
+    """摘要走快取，不走檢索。快取依語言分別存放。"""
+    lang = language_of(question)
+    data = hierarchical.load(index.doc_id, lang)
     cached = data is not None
     if data is None:
-        data = await hierarchical.build(index.doc_id, index.sections)
+        data = await hierarchical.build(index.doc_id, index.sections, lang)
 
     # 摘要沒有可指的片段，但仍應說明涵蓋範圍 ——
     # 「答案附出處」對摘要而言就是「這份摘要讀過哪些章節」。
@@ -247,6 +248,7 @@ async def _summary(index: DocumentIndex, question: str, r, started: float) -> An
         "route": "summary",
         "route_reason": r.reason,
         "cached": cached,
+        "lang": lang,
         "sections_summarized": len(data.get("section_summaries", [])),
         "n_llm_calls": 0 if cached else data.get("n_llm_calls", 0),
         "prompt_tokens": 0,

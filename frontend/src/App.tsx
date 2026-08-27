@@ -37,8 +37,12 @@ export default function App() {
     }).catch((e) => setError(String(e.message ?? e)));
   }, []);
 
-  // 切換語言時重新取快速提問 —— 它由後端依語言產生
-  useEffect(() => { if (activeId) void select(activeId); }, [lang]);
+  // 切換語言只重新取快速提問，不重設對話 ——
+  // select() 會清空 turns，切語言時等於把使用者的對話紀錄刪掉。
+  useEffect(() => {
+    if (!activeId) return;
+    api.getDocument(activeId, lang).then((d) => setQuick(d.quick_questions)).catch(() => {});
+  }, [lang, activeId]);
 
   async function select(id: string) {
     setActiveId(id);

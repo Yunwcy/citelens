@@ -6,32 +6,33 @@
   ],
   "timezone": "browser",
   "schemaVersion": 39,
-  "version": 1,
+  "version": 2,
   "refresh": "10s",
+  "editable": true,
   "time": {
     "from": "now-30m",
     "to": "now"
   },
   "panels": [
     {
-      "id": 10,
-      "title": "檢索準確度：目標章節進入前三名的比例（12 個測試問題）",
+      "id": 1,
+      "title": "檢索準確度",
       "type": "bargauge",
-      "gridPos": {
-        "x": 0,
-        "y": 0,
-        "w": 11,
-        "h": 8
-      },
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
       },
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 9,
+        "h": 7
+      },
       "targets": [
         {
+          "refId": "A",
           "expr": "citelens_eval_top3_rate",
           "legendFormat": "{{config}}",
-          "refId": "A",
           "datasource": {
             "type": "prometheus",
             "uid": "prometheus"
@@ -40,6 +41,24 @@
           "range": false
         }
       ],
+      "description": "12 個測試問題中，目標章節進入前三名的比例。由 scripts/eval.py --publish 發布。",
+      "options": {
+        "displayMode": "basic",
+        "orientation": "horizontal",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showUnfilled": true,
+        "minVizHeight": 26,
+        "maxVizHeight": 40,
+        "namePlacement": "top",
+        "valueMode": "color",
+        "sizing": "manual"
+      },
       "fieldConfig": {
         "defaults": {
           "unit": "percentunit",
@@ -68,43 +87,27 @@
           }
         },
         "overrides": []
-      },
-      "options": {
-        "displayMode": "basic",
-        "orientation": "horizontal",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "showUnfilled": true,
-        "minVizHeight": 22,
-        "valueMode": "color",
-        "sizing": "auto",
-        "namePlacement": "top"
       }
     },
     {
-      "id": 11,
-      "title": "表格解析結果（四篇論文合計）",
+      "id": 2,
+      "title": "表格解析結果",
       "type": "bargauge",
-      "gridPos": {
-        "x": 11,
-        "y": 0,
-        "w": 7,
-        "h": 8
-      },
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
       },
+      "gridPos": {
+        "x": 9,
+        "y": 0,
+        "w": 8,
+        "h": 7
+      },
       "targets": [
         {
+          "refId": "A",
           "expr": "citelens_eval_tables",
           "legendFormat": "{{state}}",
-          "refId": "A",
           "datasource": {
             "type": "prometheus",
             "uid": "prometheus"
@@ -113,18 +116,7 @@
           "range": false
         }
       ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short",
-          "min": 0,
-          "max": 20,
-          "color": {
-            "mode": "fixed",
-            "fixedColor": "#1D7A5F"
-          }
-        },
-        "overrides": []
-      },
+      "description": "四篇論文合計。數值型表格全數通過驗證；未通過者退回整表原文模式。",
       "options": {
         "displayMode": "basic",
         "orientation": "horizontal",
@@ -135,38 +127,70 @@
           "fields": "",
           "values": false
         },
-        "namePlacement": "top",
         "showUnfilled": true,
-        "minVizHeight": 22
+        "minVizHeight": 20,
+        "namePlacement": "left",
+        "valueMode": "text",
+        "sizing": "manual"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "max": 18,
+          "decimals": 0,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#1D7A5F"
+          }
+        },
+        "overrides": []
       }
     },
     {
-      "id": 12,
+      "id": 3,
       "title": "有作答時的引用標註率",
       "type": "stat",
-      "gridPos": {
-        "x": 18,
-        "y": 0,
-        "w": 6,
-        "h": 8
-      },
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
       },
+      "gridPos": {
+        "x": 17,
+        "y": 0,
+        "w": 7,
+        "h": 7
+      },
       "targets": [
         {
           "refId": "A",
+          "expr": "sum(citelens_answer_outcome_total{outcome=\"cited\"}) / sum(citelens_answer_outcome_total{outcome=~\"cited|uncited\"})",
+          "legendFormat": "引用率",
           "datasource": {
             "type": "prometheus",
             "uid": "prometheus"
           },
           "instant": true,
-          "range": false,
-          "expr": "sum(citelens_answer_outcome_total{outcome=\"cited\"}) / sum(citelens_answer_outcome_total{outcome=~\"cited|uncited\"})",
-          "legendFormat": "引用率"
+          "range": false
         }
       ],
+      "description": "分母排除「文件未涵蓋」的正確拒答 —— 那類回答沒有可標註的來源。",
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center",
+        "text": {
+          "valueSize": 64
+        }
+      },
       "fieldConfig": {
         "defaults": {
           "unit": "percentunit",
@@ -191,182 +215,279 @@
           }
         },
         "overrides": []
-      },
-      "options": {
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "colorMode": "value",
-        "graphMode": "area"
-      },
-      "description": "分母排除「文件未涵蓋」的正確拒答 —— 那類回答本來就沒有可標註的來源，計入會把正確行為算成失敗。"
-    },
-    {
-      "id": 1,
-      "title": "查詢量（依路由）",
-      "type": "timeseries",
-      "gridPos": {
-        "x": 0,
-        "y": 8,
-        "w": 8,
-        "h": 7
-      },
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "targets": [
-        {
-          "expr": "sum by (route) (rate(citelens_query_total[5m]) * 300)",
-          "legendFormat": "{{route}}",
-          "refId": "A",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          }
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short"
-        },
-        "overrides": []
-      }
-    },
-    {
-      "id": 2,
-      "title": "端到端延遲",
-      "type": "timeseries",
-      "gridPos": {
-        "x": 8,
-        "y": 8,
-        "w": 8,
-        "h": 7
-      },
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "targets": [
-        {
-          "expr": "histogram_quantile(0.5, sum(rate(citelens_request_seconds_bucket[10m])) by (le))",
-          "legendFormat": "p50",
-          "refId": "A",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          }
-        },
-        {
-          "expr": "histogram_quantile(0.95, sum(rate(citelens_request_seconds_bucket[10m])) by (le))",
-          "legendFormat": "p95",
-          "refId": "B",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          }
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "s"
-        },
-        "overrides": []
-      }
-    },
-    {
-      "id": 3,
-      "title": "延遲拆解：檢索 vs 生成",
-      "type": "timeseries",
-      "gridPos": {
-        "x": 16,
-        "y": 8,
-        "w": 8,
-        "h": 7
-      },
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "targets": [
-        {
-          "expr": "histogram_quantile(0.95, sum(rate(citelens_retrieval_seconds_bucket[10m])) by (le))",
-          "legendFormat": "檢索 p95",
-          "refId": "A",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          }
-        },
-        {
-          "expr": "histogram_quantile(0.95, sum(rate(citelens_llm_seconds_bucket[10m])) by (le))",
-          "legendFormat": "生成 p95",
-          "refId": "B",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          }
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "s"
-        },
-        "overrides": []
       }
     },
     {
       "id": 4,
-      "title": "脈絡用量（上限 7,000）",
+      "title": "查詢量（依路由）",
       "type": "timeseries",
-      "gridPos": {
-        "x": 0,
-        "y": 15,
-        "w": 8,
-        "h": 7
-      },
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
       },
+      "gridPos": {
+        "x": 0,
+        "y": 7,
+        "w": 8,
+        "h": 7
+      },
       "targets": [
         {
-          "expr": "histogram_quantile(0.5, sum(rate(citelens_prompt_tokens_bucket[10m])) by (le))",
-          "legendFormat": "p50",
           "refId": "A",
+          "expr": "sum by (route) (increase(citelens_query_total[5m]))",
+          "legendFormat": "{{route}}",
           "datasource": {
             "type": "prometheus",
             "uid": "prometheus"
-          }
-        },
-        {
-          "expr": "histogram_quantile(0.95, sum(rate(citelens_prompt_tokens_bucket[10m])) by (le))",
-          "legendFormat": "p95",
-          "refId": "B",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          }
+          },
+          "instant": false,
+          "range": true
         }
       ],
+      "description": "三條路由各自的查詢量。分流有效時三者都會有量。",
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
       "fieldConfig": {
         "defaults": {
           "unit": "short",
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 8,
+            "showPoints": "never",
+            "gradientMode": "opacity",
+            "axisBorderShow": false,
+            "axisGridShow": true,
+            "spanNulls": true
+          },
+          "decimals": 0
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 5,
+      "title": "端到端延遲",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 8,
+        "y": 7,
+        "w": 8,
+        "h": 7
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "histogram_quantile(0.5, sum(rate(citelens_request_seconds_bucket[10m])) by (le))",
+          "legendFormat": "p50",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "instant": false,
+          "range": true
+        },
+        {
+          "refId": "B",
+          "expr": "histogram_quantile(0.95, sum(rate(citelens_request_seconds_bucket[10m])) by (le))",
+          "legendFormat": "p95",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "instant": false,
+          "range": true
+        }
+      ],
+      "description": "使用者感受到的總時間。",
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 8,
+            "showPoints": "never",
+            "gradientMode": "opacity",
+            "axisBorderShow": false,
+            "axisGridShow": true,
+            "spanNulls": true
+          },
+          "decimals": 1
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 6,
+      "title": "延遲拆解：檢索 vs 生成",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 16,
+        "y": 7,
+        "w": 8,
+        "h": 7
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "histogram_quantile(0.95, sum(rate(citelens_retrieval_seconds_bucket[10m])) by (le))",
+          "legendFormat": "檢索 p95",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "instant": false,
+          "range": true
+        },
+        {
+          "refId": "B",
+          "expr": "histogram_quantile(0.95, sum(rate(citelens_llm_seconds_bucket[10m])) by (le))",
+          "legendFormat": "生成 p95",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "instant": false,
+          "range": true
+        }
+      ],
+      "description": "檢索貼著底部、生成在數秒之譜 —— 瓶頸在模型不在檢索。",
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 8,
+            "showPoints": "never",
+            "gradientMode": "opacity",
+            "axisBorderShow": false,
+            "axisGridShow": true,
+            "spanNulls": true
+          },
+          "decimals": 1
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 7,
+      "title": "脈絡用量（上限 7,000 tokens）",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 14,
+        "w": 9,
+        "h": 7
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "histogram_quantile(0.5, sum(rate(citelens_prompt_tokens_bucket[10m])) by (le))",
+          "legendFormat": "p50",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "instant": false,
+          "range": true
+        },
+        {
+          "refId": "B",
+          "expr": "histogram_quantile(0.95, sum(rate(citelens_prompt_tokens_bucket[10m])) by (le))",
+          "legendFormat": "p95",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "instant": false,
+          "range": true
+        }
+      ],
+      "description": "送進模型的內容量，從未觸及 7,000 的上限。",
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
           "max": 7000,
+          "min": 0,
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 8,
+            "showPoints": "never",
+            "gradientMode": "opacity",
+            "axisBorderShow": false,
+            "spanNulls": true,
+            "thresholdsStyle": {
+              "mode": "dashed"
+            }
+          },
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
+                "color": "transparent",
                 "value": null
               },
               {
-                "color": "orange",
-                "value": 6000
+                "color": "#D9A441",
+                "value": 7000
               }
             ]
           }
@@ -375,106 +496,44 @@
       }
     },
     {
-      "id": 5,
-      "title": "累計成本",
+      "id": 8,
+      "title": "累計成本與查詢次數",
       "type": "stat",
-      "gridPos": {
-        "x": 8,
-        "y": 15,
-        "w": 8,
-        "h": 7
-      },
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
       },
+      "gridPos": {
+        "x": 9,
+        "y": 14,
+        "w": 8,
+        "h": 7
+      },
       "targets": [
         {
+          "refId": "A",
           "expr": "citelens_cost_usd_total",
-          "legendFormat": "USD",
-          "refId": "A",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          }
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "currencyUSD"
-        },
-        "overrides": []
-      }
-    },
-    {
-      "id": 6,
-      "title": "表格驗證與索引 API 呼叫",
-      "type": "stat",
-      "gridPos": {
-        "x": 16,
-        "y": 15,
-        "w": 8,
-        "h": 7
-      },
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "targets": [
-        {
-          "expr": "sum by (validated) (citelens_table_total)",
-          "legendFormat": "表格 validated={{validated}}",
-          "refId": "A",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          }
-        },
-        {
-          "expr": "citelens_index_external_api_calls_total",
-          "legendFormat": "索引階段外部 API 呼叫",
-          "refId": "B",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          }
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short"
-        },
-        "overrides": []
-      }
-    },
-    {
-      "id": 13,
-      "title": "回答結果分布",
-      "type": "piechart",
-      "gridPos": {
-        "x": 18,
-        "y": 8,
-        "w": 6,
-        "h": 8
-      },
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "description": "cited 有標註引用 · uncited 有作答但未標註 · declined 文件未涵蓋（正確拒答）",
-      "targets": [
-        {
-          "refId": "A",
+          "legendFormat": "累計成本（USD）",
           "datasource": {
             "type": "prometheus",
             "uid": "prometheus"
           },
           "instant": true,
-          "range": false,
-          "expr": "citelens_answer_outcome_total",
-          "legendFormat": "{{outcome}}"
+          "range": false
+        },
+        {
+          "refId": "B",
+          "expr": "sum(citelens_query_total)",
+          "legendFormat": "查詢次數",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "instant": true,
+          "range": false
         }
       ],
+      "description": "索引階段不呼叫外部 API，成本僅來自查詢時的模型生成。",
       "options": {
         "reduceOptions": {
           "calcs": [
@@ -483,20 +542,153 @@
           "fields": "",
           "values": false
         },
-        "pieType": "donut",
-        "legend": {
-          "displayMode": "list",
-          "placement": "bottom"
+        "colorMode": "none",
+        "graphMode": "none",
+        "textMode": "value_and_name",
+        "justifyMode": "center",
+        "orientation": "horizontal",
+        "text": {
+          "valueSize": 38,
+          "titleSize": 14
         }
       },
       "fieldConfig": {
         "defaults": {
-          "unit": "short",
           "color": {
-            "mode": "palette-classic"
+            "mode": "fixed",
+            "fixedColor": "#1D7A5F"
           }
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "累計成本（USD）"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "currencyUSD"
+              },
+              {
+                "id": "decimals",
+                "value": 4
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "查詢次數"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "short"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#8A9A94"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": 9,
+      "title": "回答結果分布",
+      "type": "bargauge",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 17,
+        "y": 14,
+        "w": 7,
+        "h": 7
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "citelens_answer_outcome_total",
+          "legendFormat": "{{outcome}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "instant": true,
+          "range": false
+        }
+      ],
+      "description": "cited 有標註引用 · uncited 有作答但未標註 · declined 文件未涵蓋而如實拒答。",
+      "options": {
+        "displayMode": "basic",
+        "orientation": "horizontal",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showUnfilled": true,
+        "minVizHeight": 22,
+        "maxVizHeight": 40,
+        "namePlacement": "top",
+        "valueMode": "text",
+        "sizing": "manual"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "min": 0,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#8A9A94"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "cited"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#1D7A5F"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "uncited"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#C0847B"
+                }
+              }
+            ]
+          }
+        ]
       }
     }
   ]

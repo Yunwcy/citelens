@@ -125,8 +125,8 @@ async def get_doc(doc_id: str, lang: str = "zh") -> dict:
 
 
 @router.get("/documents/{doc_id}/summary")
-async def get_summary(doc_id: str) -> dict:
-    data = hierarchical.load(doc_id)
+async def get_summary(doc_id: str, lang: str = "zh") -> dict:
+    data = hierarchical.load(doc_id, "en" if lang.startswith("en") else "zh")
     if data is None:
         raise HTTPException(404, "摘要尚未產生")
     return data

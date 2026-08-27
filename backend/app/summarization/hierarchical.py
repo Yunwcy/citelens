@@ -32,11 +32,24 @@ _MAX_GROUP_TOKENS = 3_500      # 超過此長度的一級章節改以其子章�
 _SECTION_SUMMARY_TOKENS = 700  # 每段章節摘要的長度上限
 
 
-async def build(doc_id: str, sections: list[Section]) -> dict:
-    """產生並快取摘要。已存在則直接讀回。"""
+async def build(doc_id: str, sections: list[Section], lang: str = "zh") -> dict:
+    """產生並快取摘要。
+
+    章節摘要與語言無關，只做一次；最終整合依語言各自產生並快取。
+    完整重做一次要八次模型呼叫、約十四秒，只重做整合則是一次、約三秒。
+    """
     path = settings.storage_dir / doc_id / "summary.json"
     if path.exists():
-        return json.loads(path.read_text(encoding="utf-8"))
+        data = json.loads(path.read_text(encoding="utf-8"))
+        # 舊格式只有單一 summary 欄位，視為既有語言的整合結果
+        if "summaries" not in data:
+            data["summaries"] = {data.get("lang", "zh"): data.get("summary", "")}
+        if lang in data.get("summaries", {}):
+            return {**data, "summary": data["summaries"][lang], "lang": lang}
+        # 章節摘要已存在，只需補做該語言的整合
+        data["summaries"][lang] = await _reduce(data["section_summaries"], lang)
+        path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+        return {**data, "summary": data["summaries"][lang], "lang": lang}
 
     if not sections:
         raise ValueError(f"{doc_id} 沒有章節資料，無法建立摘要")
@@ -51,18 +64,15 @@ async def build(doc_id: str, sections: list[Section]) -> dict:
         for g, summary in zip(groups, results)
     ]
 
-    joined = "\n\n".join(f"## {s['section']}\n{s['summary']}" for s in section_summaries)
-    final = await client.generate(
-        tokens.truncate(joined, _MAP_INPUT_LIMIT),
-        system=prompts.SUMMARY_REDUCE_SYSTEM,
-        max_tokens=1_600,
-    )
+    final = await _reduce(section_summaries, lang)
 
     elapsed = time.perf_counter() - started
     data = {
         "doc_id": doc_id,
         "section_summaries": section_summaries,
-        "summary": final.text,
+        "summaries": {lang: final},
+        "summary": final,
+        "lang": lang,
         "n_llm_calls": len(groups) + 1,
         "build_seconds": round(elapsed, 1),
     }
@@ -121,6 +131,22 @@ async def _map_one(title: str, text: str) -> str:
     return result.text
 
 
-def load(doc_id: str) -> dict | None:
+async def _reduce(section_summaries: list[dict], lang: str) -> str:
+    joined = "\n\n".join(f"## {s['section']}\n{s['summary']}" for s in section_summaries)
+    result = await client.generate(
+        tokens.truncate(joined, _MAP_INPUT_LIMIT),
+        system=prompts.SUMMARY_REDUCE_SYSTEM + prompts.LANGUAGE_DIRECTIVE[lang],
+        max_tokens=1_600,
+    )
+    return result.text
+
+
+def load(doc_id: str, lang: str = "zh") -> dict | None:
+    """僅在該語言的整合已存在時回傳；否則交由 build 補做。"""
     path = settings.storage_dir / doc_id / "summary.json"
-    return json.loads(path.read_text(encoding="utf-8")) if path.exists() else None
+    if not path.exists():
+        return None
+    data = json.loads(path.read_text(encoding="utf-8"))
+    if lang not in data.get("summaries", {}):
+        return None      # 尚未產生該語言的整合，交由 build 補做
+    return {**data, "summary": data["summaries"][lang], "lang": lang}
