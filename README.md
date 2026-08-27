@@ -183,6 +183,7 @@ REST 與 SSE：
 | `POST /api/documents/from-url` | 由 arXiv 或 PDF 連結匯入 |
 | `GET /api/documents` | 文件清單 |
 | `GET /api/documents/{id}` | 文件資訊、表格清單、建議問題 |
+| `DELETE /api/documents/{id}` | 刪除文件、索引與摘要快取 |
 | `GET /api/documents/{id}/summary` | 全文摘要 |
 | `POST /api/query` | 問答（SSE 串流） |
 | `GET /api/jobs/{id}/events` | 索引進度（SSE 串流） |
@@ -202,7 +203,7 @@ python -m app.mcp_server
 ## 開發
 
 ```bash
-cd backend && python -m pytest tests -q                      # 58 項測試
+cd backend && python -m pytest tests -q                      # 59 項測試
 python scripts/e2e.py --generality                           # 端到端驗收（經 nginx）
 ```
 

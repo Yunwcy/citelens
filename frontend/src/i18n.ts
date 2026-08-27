@@ -11,6 +11,9 @@ export interface Strings {
   dropPdf: string;
   pdfLimit: string;
   orPasteLink: string;
+  deleteDoc: string;
+  confirmDelete: string;
+  cancel: string;
   linkPlaceholder: string;
   import: string;
   pages: (n: number) => string;
@@ -70,6 +73,9 @@ export const STRINGS: Record<Lang, Strings> = {
     dropPdf: "拖曳 PDF 到這裡",
     pdfLimit: "PDF · 最大 30MB",
     orPasteLink: "或貼上連結",
+    deleteDoc: "刪除這份文件",
+    confirmDelete: "刪除？此動作無法復原",
+    cancel: "取消",
     linkPlaceholder: "arXiv 網址或 PDF 連結",
     import: "匯入",
     pages: (n: number) => `${n} 頁`,
@@ -138,6 +144,9 @@ export const STRINGS: Record<Lang, Strings> = {
     dropPdf: "Drop a PDF here",
     pdfLimit: "PDF · 30 MB max",
     orPasteLink: "Or paste a link",
+    deleteDoc: "Delete this document",
+    confirmDelete: "Delete? This cannot be undone",
+    cancel: "Cancel",
     linkPlaceholder: "arXiv URL or PDF link",
     import: "Import",
     pages: (n: number) => `${n} page${n === 1 ? "" : "s"}`,

@@ -234,6 +234,14 @@ async def get_doc(doc_id: str, lang: str = "zh") -> DocDetail:
     }
 
 
+@router.delete("/documents/{doc_id}", status_code=204)
+async def delete_doc(doc_id: str) -> Response:
+    """刪除文件及其索引、摘要快取。"""
+    if not await documents.delete(doc_id):
+        raise HTTPException(404, "找不到這份文件")
+    return Response(status_code=204)
+
+
 @router.get("/documents/{doc_id}/summary")
 async def get_summary(doc_id: str, lang: str = "zh") -> SummaryResponse:
     data = hierarchical.load(doc_id, "en" if lang.startswith("en") else "zh")

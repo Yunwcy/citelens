@@ -76,6 +76,11 @@ export const uploadFromUrl = async (url: string) =>
 
 export const listDocuments = () => fetch(`${BASE}/api/documents`).then(json<DocSummary[]>);
 
+export async function deleteDocument(id: string): Promise<void> {
+  const r = await fetch(`${BASE}/api/documents/${id}`, { method: "DELETE" });
+  if (!r.ok) throw new HttpError(r.status);
+}
+
 export const getDocument = (id: string, lang = "zh") =>
   fetch(`${BASE}/api/documents/${id}?lang=${lang}`).then(
     json<{ meta: any; tables: any[]; quick_questions: string[] }>,

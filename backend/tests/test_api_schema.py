@@ -22,7 +22,10 @@ def test_每支端點的回應都要有可讀的形狀():
             if not ok:
                 vague.append(f"{method.upper()} {path}：沒有成功回應")
                 continue
-            content = ok[sorted(ok)[0]].get("content", {})
+            code = sorted(ok)[0]
+            if code == "204":
+                continue                      # No Content 本來就沒有回應主體
+            content = ok[code].get("content", {})
             if not content:
                 vague.append(f"{method.upper()} {path}：未宣告回應內容")
                 continue

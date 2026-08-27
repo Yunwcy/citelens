@@ -82,6 +82,33 @@ export default function App() {
     return e?.message ?? String(e);
   }
 
+  async function handleDelete(id: string) {
+    setError(null);
+    try {
+      await api.deleteDocument(id);
+    } catch (e: any) {
+      setError(describe(e));
+      return;
+    }
+    // 連同該文件的對話紀錄一起清掉：留著會在下次上傳同一份文件時
+    // （doc_id 由內容雜湊而來，會是同一個）憑空冒出舊對話
+    setHistory((all) => {
+      const { [id]: _gone, ...rest } = all;
+      return rest;
+    });
+    const docs = await refresh();
+    if (activeId === id) {
+      if (docs.length) {
+        select(docs[0].doc_id);
+      } else {
+        setActiveId(null);
+        activeIdRef.current = null;
+        setReady(false);
+        setQuick([]);
+      }
+    }
+  }
+
   const handleUpload = (file: File) => start(() => api.upload(file), file.name);
   const handleUploadUrl = (url: string) =>
     start(() => api.uploadFromUrl(url), lang === "zh" ? "由網址匯入" : "From link");
@@ -201,6 +228,7 @@ export default function App() {
         <DocumentPanel
           documents={documents} activeId={activeId} job={job} error={error} t={t}
           onSelect={select} onUpload={handleUpload} onUploadUrl={handleUploadUrl}
+          onDelete={handleDelete}
         />
         <Chat
           turns={turns} quickQuestions={quick} ready={canAsk} busy={busy} t={t}

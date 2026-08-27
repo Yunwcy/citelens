@@ -13,6 +13,7 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import json
+import shutil
 import logging
 from collections import OrderedDict
 from dataclasses import dataclass, field
@@ -157,6 +158,22 @@ def get_job(job_id: str) -> Job | None:
 
 
 # --- 讀取 -------------------------------------------------------------------
+
+async def delete(doc_id: str) -> bool:
+    """刪除一份文件：磁碟與記憶體快取都要清掉。
+
+    只清其中一邊會留下不一致的狀態 —— 清了磁碟但快取還在，
+    這份文件仍然答得出問題，卻已經不在清單裡。
+    """
+    path = settings.storage_dir / doc_id
+    if not path.is_dir():
+        return False
+    async with _cache_lock:
+        _cache.pop(doc_id, None)
+    await asyncio.to_thread(shutil.rmtree, path)
+    log.info("已刪除文件 %s", doc_id)
+    return True
+
 
 def _put(doc_id: str, idx: DocumentIndex) -> None:
     _cache[doc_id] = idx

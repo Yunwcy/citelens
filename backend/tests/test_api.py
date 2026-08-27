@@ -110,3 +110,32 @@ def test_摘要失敗不得讓整份文件被判定為失敗(lightrag_pdf, monke
     assert job.error is None, f"摘要失敗不應讓工作失敗：{job.error}"
     assert job.stage == "ready"
     assert job.detail.get("summary_ready") is False
+
+
+def test_刪除文件會同時清掉磁碟與快取(lightrag_pdf, monkeypatch, tmp_path):
+    """只清其中一邊會留下不一致的狀態：清了磁碟但快取還在，
+    這份文件仍然答得出問題，卻已經不在清單裡。"""
+    import asyncio
+
+    from app.config import settings
+    from app.services import documents
+
+    monkeypatch.setattr(settings, "storage_dir", tmp_path)
+
+    async def run():
+        job = await documents.submit(lightrag_pdf.name, lightrag_pdf.read_bytes())
+        for _ in range(600):
+            if job.done:
+                break
+            await asyncio.sleep(0.5)
+        doc_id = job.doc_id
+        await documents.get_index(doc_id)                 # 確保進了快取
+        assert doc_id in documents._cache
+
+        assert await documents.delete(doc_id) is True
+        assert doc_id not in documents._cache
+        assert not (tmp_path / doc_id).exists()
+        assert all(d["doc_id"] != doc_id for d in documents.list_documents())
+        assert await documents.delete(doc_id) is False    # 再刪一次應回報找不到
+
+    asyncio.run(run())

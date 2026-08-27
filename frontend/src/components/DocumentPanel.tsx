@@ -20,13 +20,15 @@ type Props = {
   onSelect: (id: string) => void;
   onUpload: (file: File) => void;
   onUploadUrl: (url: string) => void;
+  onDelete: (id: string) => void;
 };
 
 export function DocumentPanel({
-  documents, activeId, job, error, t, onSelect, onUpload, onUploadUrl,
+  documents, activeId, job, error, t, onSelect, onUpload, onUploadUrl, onDelete,
 }: Props) {
   const input = useRef<HTMLInputElement>(null);
   const [url, setUrl] = useState("");
+  const [confirming, setConfirming] = useState<string | null>(null);
   const busy = job !== null && job.stage !== "ready" && job.stage !== "failed";
 
   return (
@@ -35,25 +37,65 @@ export function DocumentPanel({
 
       {documents.map((d) => {
         const active = d.doc_id === activeId;
+        const asking = confirming === d.doc_id;
         return (
-          <button
-            key={d.doc_id}
-            onClick={() => onSelect(d.doc_id)}
-            className={`text-left rounded-lg border p-2.5 transition-colors ${
-              active ? "border-accent bg-accent-soft" : "border-line bg-surface hover:border-line-strong"
-            }`}
-          >
-            <div className="truncate font-medium">{d.filename}</div>
-            <div className="text-xs text-ink-soft mt-0.5">
-              {t.pages(d.pages ?? 0)} · {t.passages(d.chunks ?? 0)}
-            </div>
-            <div className="mt-1.5 flex items-center gap-1.5">
-              <Badge stage="ready" t={t} />
-              {d.tables ? (
-                <span className="text-xs text-ink-faint">{t.tables(d.tables)}</span>
-              ) : null}
-            </div>
-          </button>
+          // 卡片本身是按鈕，刪除鈕不能巢狀其中 —— 改為絕對定位的同層元素
+          <div key={d.doc_id} className="relative group">
+            <button
+              onClick={() => onSelect(d.doc_id)}
+              className={`w-full text-left rounded-lg border p-2.5 transition-colors ${
+                active ? "border-accent bg-accent-soft"
+                       : "border-line bg-surface hover:border-line-strong"
+              }`}
+            >
+              <div className="truncate font-medium pr-5">{d.filename}</div>
+              <div className="text-xs text-ink-soft mt-0.5">
+                {t.pages(d.pages ?? 0)} · {t.passages(d.chunks ?? 0)}
+              </div>
+              <div className="mt-1.5 flex items-center gap-1.5">
+                <Badge stage="ready" t={t} />
+                {d.tables ? (
+                  <span className="text-xs text-ink-faint">{t.tables(d.tables)}</span>
+                ) : null}
+              </div>
+            </button>
+
+            {!asking && (
+              <button
+                onClick={() => setConfirming(d.doc_id)}
+                aria-label={t.deleteDoc}
+                title={t.deleteDoc}
+                className="absolute right-1.5 top-1.5 h-5 w-5 rounded text-ink-faint
+                           opacity-0 group-hover:opacity-100 focus:opacity-100
+                           hover:bg-line hover:text-ink transition-opacity"
+              >
+                ×
+              </button>
+            )}
+
+            {/* 刪除不可復原，因此改為兩段式確認，而不是點一下就消失 */}
+            {asking && (
+              <div className="absolute inset-0 flex flex-col justify-center gap-1.5
+                              rounded-lg border border-red-300 bg-red-50 px-2.5">
+                <span className="text-xs text-red-800 leading-snug">{t.confirmDelete}</span>
+                <div className="flex gap-1.5">
+                  <button
+                    onClick={() => { setConfirming(null); onDelete(d.doc_id); }}
+                    className="rounded border border-red-300 bg-white px-2 py-0.5
+                               text-xs text-red-800 hover:bg-red-100"
+                  >
+                    {t.deleteDoc}
+                  </button>
+                  <button
+                    onClick={() => setConfirming(null)}
+                    className="rounded border border-line bg-white px-2 py-0.5 text-xs"
+                  >
+                    {t.cancel}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         );
       })}
 
