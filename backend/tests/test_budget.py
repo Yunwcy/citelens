@@ -38,13 +38,17 @@ def test_表格永不裁切():
     assert "u" not in ctx.truncated
 
 
-def test_命中表格列時整張表一併帶入():
-    """否則模型只看得到被命中的那幾列，卻據此回答整張表的問題。"""
+def test_命中表格列時以整張表取代該列():
+    """逐列片段的用途是讓表格被找到；找到之後，完整表格才是更好的脈絡。
+
+    兩者同時出現時，被命中的那幾列會錨定模型的注意力 ——
+    實測問「消融版本的表現」時，模型只回答了被命中的基準區塊。
+    """
     row = _chunk("T1-r00", 50, kind="table_row", table_id="T1")
     full = _chunk("T1-full", 300, kind="table_full", table_id="T1")
     ctx = pack([row], all_chunks=[row, full])
     ids = [c.chunk_id for _, c, _ in ctx.blocks]
-    assert ids == ["T1-r00", "T1-full"]
+    assert ids == ["T1-full"]
 
 
 def test_整表只會被帶入一次():
@@ -52,7 +56,14 @@ def test_整表只會被帶入一次():
     full = _chunk("T1-full", 300, kind="table_full", table_id="T1")
     ctx = pack(rows, all_chunks=rows + [full])
     ids = [c.chunk_id for _, c, _ in ctx.blocks]
-    assert ids.count("T1-full") == 1
+    assert ids == ["T1-full"]
+
+
+def test_沒有整表時逐列片段仍保留():
+    """整表片段不存在（例如驗證失敗被清空）時，逐列仍是唯一的資料來源。"""
+    rows = [_chunk(f"T9-r{i:02d}", 50, kind="table_row", table_id="T9") for i in range(3)]
+    ctx = pack(rows, all_chunks=rows)
+    assert [c.chunk_id for _, c, _ in ctx.blocks] == ["T9-r00", "T9-r01", "T9-r02"]
 
 
 def test_引用編號連續且從一開始():

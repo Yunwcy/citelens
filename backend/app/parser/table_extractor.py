@@ -129,9 +129,20 @@ def _extract_one(
     original_levels = [list(lvl) for lvl in header_levels]
     columns = _labels(header_levels, n_cols)
 
+    # 第一個區塊沒有分隔列，其基準名稱取自最內層表頭。
+    # 不補的話，Table 2 的基準區塊列標題只是「Comprehensiveness」，
+    # 與消融版本的「-High / Comprehensiveness」無從區分 ——
+    # 實測問「消融版本的表現」時，模型會取用基準區塊的數字。
+    aligned_all = [_assign_span(r["cells"], template, span=False) for r in body_rows]
+    multi_block = any(
+        not any(_NUMBER.search(c) for c in cells) and any(cells[1:]) for cells in aligned_all
+    )
+    inner = header_levels[-1] if header_levels else []
+    base_group = inner[1] if multi_block and len(inner) > 1 and inner[1] else ""
+
     rows: list[tuple[str, dict[str, str]]] = []
     seen_labels: Counter = Counter()
-    group = ""
+    group = base_group
     for r in body_rows:
         aligned = _assign_span(r["cells"], template, span=False)
         if not any(_NUMBER.search(c) for c in aligned) and any(aligned[1:]):
@@ -334,8 +345,6 @@ def _markdown(header_levels, template, body_rows) -> str:
         lines.append("| " + " | ".join(lvl) + " |")
     lines.append("|" + "|".join([" --- "] * len(template)) + "|")
 
-    # 第一個區塊沒有分隔列，其基準名稱來自最內層表頭。
-    # 僅在表格確實分成多個區塊時才補 —— 單一區塊的表格加了只會變成雜訊。
     aligned_rows = [_assign_span(r["cells"], template, span=False) for r in body_rows]
     multi_block = any(
         not any(_NUMBER.search(c) for c in cells) and any(cells[1:])
@@ -394,8 +403,7 @@ def _validate(page, x0, y0, x1, y1, table: Table) -> tuple[bool, str]:
 def linearize(table: Table) -> list[str]:
     """逐列轉成「欄名 = 值」的自然語言，讓關鍵字與語意檢索都能命中。"""
     head = f"【{table.caption or table.table_id} · p.{table.page}】"
-    out = []
-    for label, vals in table.rows:
-        pairs = "；".join(f"{col} = {val}" for col, val in vals.items())
-        out.append(f"{head} {label}：{pairs}")
-    return out
+    return [
+        f"{head} {label}：" + "；".join(f"{col} = {val}" for col, val in vals.items())
+        for label, vals in table.rows
+    ]

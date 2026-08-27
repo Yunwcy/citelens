@@ -82,10 +82,16 @@ def _table_chunks(tables: list[Table], sections: list[Section]) -> list[Chunk]:
         sec = _owning_section(t, sections)
         head = f"{t.caption or t.table_id}（第 {t.page} 頁）"
 
+        # 數值型表格用逐列的「欄名 = 值」呈現，而非 markdown 表格。
+        # markdown 的欄位對應要靠位置推斷：多區塊表格中，各區塊的欄名
+        # 由分隔列宣告，模型讀到幾列之後就追蹤不到，會把某一欄的值
+        # 掛到另一欄的標題下。逐格自我描述則沒有這個問題。
+        body = "\n".join(table_extractor.linearize(t)) if t.rows else t.markdown
+
         out.append(
             Chunk(
                 chunk_id=f"{t.table_id}-full",
-                text=f"{head}\n{t.markdown}",
+                text=f"{head}\n{body}",
                 page=t.page,
                 section_id=sec.id if sec else "",
                 section_title=sec.title if sec else "",

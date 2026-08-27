@@ -25,8 +25,9 @@ def test_表格二的黃金儲存格(lightrag):
     """對照論文原文逐格核對。任何一格對不上就是解析錯了。"""
     t2 = next(t for t in lightrag.tables if t.table_id == "T2")
     expected = {
-        "Diversity|CS / NaiveRAG": "38.0%",
-        "Diversity|CS / LightRAG": "62.0%",
+        # 基準區塊的列標題也帶上其對照方法名稱 —— 少了它就無法與消融版本區分
+        "NaiveRAG / Diversity|CS / NaiveRAG": "38.0%",
+        "NaiveRAG / Diversity|CS / LightRAG": "62.0%",
         "-High / Diversity|CS / NaiveRAG": "36.8%",
         "-High / Diversity|CS / -High": "63.2%",
         "-Low / Overall|Legal / NaiveRAG": "18.8%",

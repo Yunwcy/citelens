@@ -92,10 +92,16 @@ def pack(
 
 
 def _expand_tables(chunks: list[Chunk], all_chunks: list[Chunk] | None) -> list[Chunk]:
-    """命中表格列時，緊接著補上該表格的完整內容。
+    """命中表格列時，以該表格的完整內容取代那幾列。
 
-    只補一次，且放在第一個命中列之後 —— 保持檢索排序，
-    同時讓模型看到完整的欄列對應關係。
+    逐列片段的用途是讓表格「被找到」—— 欄名與值展開成文字後，
+    關鍵字與語意檢索才命中得到。但一旦找到了，完整表格才是更好的脈絡：
+    它保有全部區塊與欄列對應。
+
+    兩者同時出現時，被命中的那幾列會錨定模型的注意力。實測問
+    「消融版本的表現」時，檢索取回的是基準區塊的四列，
+    模型就據此回答，完全沒有使用同在脈絡中的完整表格 ——
+    答案裡沒有任何一個消融版本。
     """
     if not all_chunks:
         return chunks
@@ -104,19 +110,31 @@ def _expand_tables(chunks: list[Chunk], all_chunks: list[Chunk] | None) -> list[
         c.meta.get("table_id"): c for c in all_chunks if c.kind == "table_full"
     }
     # 先掃一遍已存在的整表片段，避免檢索本身已取回整表時又補一份
-    seen: set[str] = {
+    # 哪些表格會以完整形式出現：檢索直接取回的，加上由命中列展開的
+    with_full = {
         c.meta["table_id"] for c in chunks
         if c.kind == "table_full" and c.meta.get("table_id")
     }
+    with_full |= {
+        c.meta["table_id"] for c in chunks
+        if c.kind == "table_row" and c.meta.get("table_id") in full_by_table
+    }
+
+    emitted: set[str] = set()
     out: list[Chunk] = []
     for c in chunks:
-        out.append(c)
         tid = c.meta.get("table_id")
-        if c.kind == "table_row" and tid and tid not in seen:
-            seen.add(tid)
-            full = full_by_table.get(tid)
-            if full is not None:
-                out.append(full)
+        if c.kind == "table_row" and tid in with_full:
+            # 以完整表格取代該列，且每張表只放一次
+            if tid not in emitted:
+                emitted.add(tid)
+                out.append(full_by_table[tid])
+            continue
+        if c.kind == "table_full" and tid:
+            if tid in emitted:
+                continue
+            emitted.add(tid)
+        out.append(c)
     return out
 
 
