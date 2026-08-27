@@ -12,6 +12,12 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
+# macOS 沒有 `python` 這個指令，只有 `python3`；而本專案的相依裝在 .venv 裡。
+# 直接寫 python 會在這裡失敗 —— 而且是在前面全部跑完之後才失敗。
+PY="$(pwd)/.venv/bin/python"
+[ -x "$PY" ] || PY="$(command -v python3 || command -v python || true)"
+[ -n "$PY" ] || { echo '找不到 python，請先建立 .venv'; exit 1; }
+
 step() { printf '\n\033[1m── %s\033[0m\n' "$1"; }
 
 step "1/5　從零建置（無快取）"
@@ -28,14 +34,14 @@ curl -sf localhost:3000/health >/dev/null || { echo '   服務未就緒'; exit 1
 
 step "3/5　既有資料是否保留"
 docker compose logs backend 2>&1 | grep -E "重放|評估結果" | tail -2 || echo '   （無既有紀錄，屬正常）'
-curl -s localhost:3000/api/documents | python3 -c \
+curl -s localhost:3000/api/documents | "$PY" -c \
   "import sys,json; d=json.load(sys.stdin); print(f'   文件 {len(d)} 份')"
 
 step "4/5　端到端驗收"
-python scripts/e2e.py --offline --generality
+"$PY" scripts/e2e.py --offline --generality
 
 step "5/5　文件數字一致"
-python scripts/check_docs.py
+"$PY" scripts/check_docs.py
 
 printf '\n\033[1m從零建置驗證完成。\033[0m\n'
 printf '接著開 http://localhost:3000 與 http://localhost:3001 目視確認。\n'
