@@ -28,6 +28,8 @@ log = logging.getLogger(__name__)
 
 _MAP_INPUT_LIMIT = 6_000       # 單一章節送進模型的上限，留給系統提示與輸出
 _MIN_SECTION_TOKENS = 60       # 太短的章節併入前一節，不值得單獨呼叫
+_MAX_GROUP_TOKENS = 3_500      # 超過此長度的一級章節改以其子章節為單位
+_SECTION_SUMMARY_TOKENS = 700  # 每段章節摘要的長度上限
 
 
 async def build(doc_id: str, sections: list[Section]) -> dict:
@@ -51,7 +53,9 @@ async def build(doc_id: str, sections: list[Section]) -> dict:
 
     joined = "\n\n".join(f"## {s['section']}\n{s['summary']}" for s in section_summaries)
     final = await client.generate(
-        tokens.truncate(joined, _MAP_INPUT_LIMIT), system=prompts.SUMMARY_REDUCE_SYSTEM
+        tokens.truncate(joined, _MAP_INPUT_LIMIT),
+        system=prompts.SUMMARY_REDUCE_SYSTEM,
+        max_tokens=1_600,
     )
 
     elapsed = time.perf_counter() - started
@@ -73,35 +77,46 @@ async def build(doc_id: str, sections: list[Section]) -> dict:
 
 
 def _group_by_top_level(sections: list[Section]) -> list[tuple[str, str, int]]:
-    """把子章節併入其一級章節，避免為每個小節各發一次呼叫。
+    """決定摘要的 map 單位。
 
-    26 個章節逐一摘要要 27 次往返；併為一級後約 7 次，品質幾乎無差異，
-    因為子章節的內容本來就會被一併讀到。
+    預設以一級章節為單位，但過長的一級章節改以其子章節為單位 ——
+    LightRAG 論文的 Evaluation 一節涵蓋實驗設定與四個研究問題，
+    壓成一段 700 字的摘要時，模型會把「610,000 tokens vs 不到 100 tokens」
+    這類具體數字概括成「遠低於」，最有說服力的內容因此消失。
     """
-    groups: list[tuple[str, list[str], int]] = []
+    groups: list[tuple[str, list[tuple[str, str, int]]]] = []
     for sec in sections:
         text = sec.text.strip()
         if not text:
             continue
+        item = (sec.title, f"### {sec.title}\n{text}", sec.page_start)
         if sec.level <= 1 or not groups:
-            groups.append((sec.title, [f"### {sec.title}\n{text}"], sec.page_start))
+            groups.append((sec.title, [item]))
         else:
-            groups[-1][1].append(f"### {sec.title}\n{text}")
+            groups[-1][1].append(item)
 
     out: list[tuple[str, str, int]] = []
-    for title, parts, page in groups:
-        body = "\n\n".join(parts)
+    for title, items in groups:
+        body = "\n\n".join(i[1] for i in items)
+        if tokens.count(body) > _MAX_GROUP_TOKENS and len(items) > 1:
+            # 過長：改以子章節為單位，標題保留父章節作為前綴
+            for sub_title, sub_body, page in items:
+                label = sub_title if sub_title == title else f"{title} · {sub_title}"
+                out.append((label, sub_body, page))
+            continue
         if tokens.count(body) < _MIN_SECTION_TOKENS and out:
             out[-1] = (out[-1][0], out[-1][1] + "\n\n" + body, out[-1][2])
         else:
-            out.append((title, body, page))
+            out.append((title, body, items[0][2]))
     return out
 
 
 async def _map_one(title: str, text: str) -> str:
     body = tokens.truncate(text, _MAP_INPUT_LIMIT)
     result = await client.generate(
-        f"章節標題：{title}\n\n{body}", system=prompts.SUMMARY_MAP_SYSTEM, max_tokens=400
+        f"章節標題：{title}\n\n{body}",
+        system=prompts.SUMMARY_MAP_SYSTEM,
+        max_tokens=_SECTION_SUMMARY_TOKENS,
     )
     return result.text
 
