@@ -7,7 +7,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.routes import router
+from app.api.routes import Health, router
 from app.config import settings
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
@@ -52,5 +52,5 @@ app.include_router(router)
 
 
 @app.get("/health")
-async def health() -> dict:
+async def health() -> Health:
     return {"status": "ok", "retrieval_budget": settings.retrieval_budget}

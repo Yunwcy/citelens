@@ -73,6 +73,71 @@ class DocDetail(BaseModel):
     quick_questions: list[str]
 
 
+class SectionSummary(BaseModel):
+    section: str
+    page: int = 0
+    summary: str
+
+
+class SummaryResponse(BaseModel):
+    """map-reduce 的兩層產物都保留：section_summaries 是逐節的（與語言無關），
+    summaries 是各語言的整合結果，summary 是本次要求的那個語言。"""
+    doc_id: str
+    summary: str
+    lang: str
+    section_summaries: list[SectionSummary]
+    summaries: dict[str, str]
+    n_llm_calls: int = 0
+    build_seconds: float = 0.0
+
+
+class SourceOut(BaseModel):
+    """cited 為 False 表示這段有送進模型，但答案沒有引用它。"""
+    n: int
+    page: int
+    section: str
+    kind: str
+    chunk_id: str
+    score: float
+    text: str
+    cited: bool
+
+
+class AnswerResponse(BaseModel):
+    """非串流版本的回應。debug 內容隨路由而異，故不再細分。"""
+    answer: str
+    sources: list[SourceOut]
+    debug: dict
+
+
+class Health(BaseModel):
+    status: str
+    retrieval_budget: int
+
+
+class RetrievalResult(BaseModel):
+    """rank 為目標章節的名次，None 表示未進入結果；
+    covered / expected 用於一題有多個期望章節的情況。"""
+    rank: int | None = None
+    covered: int = 0
+    expected: int = 1
+
+
+class EvalReport(BaseModel):
+    """離線評估的結果。
+
+    外層的鍵是動態的（設定名、查詢字串），但葉節點的形狀是固定的 ——
+    因此標成 dict[str, Model] 而不是裸 dict：鍵不可知不代表值也不可知。
+    """
+    retrieval: dict[str, dict[str, RetrievalResult]] = {}
+    tables: dict[str, int] = {}
+
+
+class EvalPublished(BaseModel):
+    ok: bool
+    configs: list[str]
+
+
 def _sse(payload: dict) -> str:
     return f"data: {json.dumps(payload, ensure_ascii=False)}\n\n"
 
@@ -83,28 +148,31 @@ async def _stream(events: AsyncIterator[dict]) -> AsyncIterator[str]:
 
 
 @router.post("/eval")
-async def publish_eval(report: dict) -> dict:
+async def publish_eval(report: EvalReport) -> EvalPublished:
     """接收 scripts/eval.py 產生的評估結果並轉成 Prometheus gauge。
 
     檢索準確度需要事先標註每個查詢的目標章節，無法在每次查詢時即時計算，
     因此由離線評估產生後發布到這裡，與執行指標呈現在同一張儀表板上。
     """
+    data = report.model_dump()
     path = settings.storage_dir / "eval.json"
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
-    prom.publish_eval(report)
-    return {"ok": True, "configs": list(report.get("retrieval", {}))}
+    path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+    prom.publish_eval(data)
+    return EvalPublished(ok=True, configs=list(data["retrieval"]))
 
 
 @router.get("/eval")
-async def get_eval() -> dict:
+async def get_eval() -> EvalReport:
     path = settings.storage_dir / "eval.json"
     if not path.exists():
         raise HTTPException(404, "尚未發布評估結果")
-    return json.loads(path.read_text(encoding="utf-8"))
+    return EvalReport(**json.loads(path.read_text(encoding="utf-8")))
 
 
-@router.get("/metrics")
+@router.get("/metrics", response_class=Response,
+            responses={200: {"content": {"text/plain": {}},
+                             "description": "Prometheus 文字格式"}})
 async def metrics() -> Response:
     """Prometheus 抓取端點。與 metrics.jsonl 為同一組數字的不同輸出格式。"""
     return Response(prom.render(), media_type="text/plain; version=0.0.4")
@@ -167,14 +235,16 @@ async def get_doc(doc_id: str, lang: str = "zh") -> DocDetail:
 
 
 @router.get("/documents/{doc_id}/summary")
-async def get_summary(doc_id: str, lang: str = "zh") -> dict:
+async def get_summary(doc_id: str, lang: str = "zh") -> SummaryResponse:
     data = hierarchical.load(doc_id, "en" if lang.startswith("en") else "zh")
     if data is None:
         raise HTTPException(404, "摘要尚未產生")
     return data
 
 
-@router.get("/jobs/{job_id}/events")
+@router.get("/jobs/{job_id}/events", response_class=StreamingResponse,
+            responses={200: {"content": {"text/event-stream": {}},
+                             "description": "索引進度事件流"}})
 async def job_events(job_id: str) -> StreamingResponse:
     job = documents.get_job(job_id)
     if job is None:
@@ -184,7 +254,9 @@ async def job_events(job_id: str) -> StreamingResponse:
 
 # --- 查詢 -------------------------------------------------------------------
 
-@router.post("/query")
+@router.post("/query", response_class=StreamingResponse,
+            responses={200: {"content": {"text/event-stream": {}},
+                             "description": "SSE：route → stage → token… → done"}})
 async def query(req: QueryRequest) -> StreamingResponse:
     try:
         idx = await documents.get_index(req.doc_id)
@@ -198,7 +270,7 @@ async def query(req: QueryRequest) -> StreamingResponse:
 
 
 @router.post("/query/sync")
-async def query_sync(req: QueryRequest) -> dict:
+async def query_sync(req: QueryRequest) -> AnswerResponse:
     """非串流版本，供評估腳本與測試使用。"""
     try:
         idx = await documents.get_index(req.doc_id)
