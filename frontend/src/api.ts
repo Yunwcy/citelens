@@ -39,11 +39,17 @@ export type JobEvent = {
   pages?: number; sections?: number; chunks?: number; tables?: number; cached?: boolean;
 };
 
-const STATUS_MESSAGE: Record<number, string> = {
-  413: "檔案太大，上限為 30MB",
-  502: "後端沒有回應，請確認服務是否啟動",
-  504: "處理逾時，請重試",
-};
+/** 錯誤訊息由呼叫端依語言決定；此處僅回傳狀態碼供對應。 */
+export class HttpError extends Error {
+  status: number;
+  detail?: string;
+
+  constructor(status: number, detail?: string) {
+    super(detail ?? `HTTP ${status}`);
+    this.status = status;
+    this.detail = detail;
+  }
+}
 
 async function json<T>(res: Response): Promise<T> {
   if (res.ok) return res.json();
@@ -53,7 +59,7 @@ async function json<T>(res: Response): Promise<T> {
     .json()
     .then((b) => b?.detail as string | undefined)
     .catch(() => undefined);
-  throw new Error(detail ?? STATUS_MESSAGE[res.status] ?? `伺服器錯誤（HTTP ${res.status}）`);
+  throw new HttpError(res.status, detail);
 }
 
 export const uploadFromUrl = async (url: string) =>
@@ -67,8 +73,10 @@ export const uploadFromUrl = async (url: string) =>
 
 export const listDocuments = () => fetch(`${BASE}/api/documents`).then(json<DocSummary[]>);
 
-export const getDocument = (id: string) =>
-  fetch(`${BASE}/api/documents/${id}`).then(json<{ meta: any; tables: any[]; quick_questions: string[] }>);
+export const getDocument = (id: string, lang = "zh") =>
+  fetch(`${BASE}/api/documents/${id}?lang=${lang}`).then(
+    json<{ meta: any; tables: any[]; quick_questions: string[] }>,
+  );
 
 export async function upload(file: File) {
   const form = new FormData();

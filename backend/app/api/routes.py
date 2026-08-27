@@ -106,7 +106,7 @@ async def list_docs() -> list[dict]:
 
 
 @router.get("/documents/{doc_id}")
-async def get_doc(doc_id: str) -> dict:
+async def get_doc(doc_id: str, lang: str = "zh") -> dict:
     try:
         idx = await documents.get_index(doc_id)
     except KeyError:
@@ -120,7 +120,7 @@ async def get_doc(doc_id: str) -> dict:
              "validated": t.validated, "note": t.validation_note}
             for t in idx.tables.values()
         ],
-        "quick_questions": _quick_questions(idx),
+        "quick_questions": _quick_questions(idx, lang),
     }
 
 
@@ -166,21 +166,33 @@ async def query_sync(req: QueryRequest) -> dict:
     return {"answer": res.text, "sources": [asdict(s) for s in res.sources], "debug": res.debug}
 
 
-def _quick_questions(idx) -> list[str]:
+_QUICK_FIXED = {
+    "zh": ["摘要這份文件", "比較文中提到的方法", "找出表格中的數據"],
+    "en": ["Summarize this document", "Compare the methods discussed",
+           "Find the numbers in the tables"],
+}
+
+# 依偵測到的章節自動生成。問題以人工撰寫，非逐字翻譯 ——
+# 兩種語言各自要像該語言的使用者會問的方式。
+_QUICK_BY_SECTION = [
+    ("ablation", {"zh": "消融實驗的結果如何？", "en": "What do the ablation studies show?"}),
+    ("evaluation", {"zh": "實驗是怎麼設計的？", "en": "How were the experiments set up?"}),
+    ("cost", {"zh": "成本與效率的比較結果是什麼？", "en": "How do cost and efficiency compare?"}),
+    ("related work", {"zh": "與既有方法的差異在哪裡？", "en": "How does it differ from prior work?"}),
+]
+
+
+def _quick_questions(idx, lang: str = "zh") -> list[str]:
     """快速提問：三個固定項，再依偵測到的章節自動長出最多兩個。
 
     這是介面上「不懂這個系統的人也能完成一次操作」的主要機制，
     同時也在示範章節偵測確實有效。
     """
-    out = ["摘要這份文件", "比較文中提到的方法", "找出表格中的數據"]
+    lang = "en" if lang.startswith("en") else "zh"
+    out = list(_QUICK_FIXED[lang])
     titles = [c.section_title for c in idx.chunks if c.section_title]
-    seen: list[str] = []
-    for kw, question in (
-        ("ablation", "消融實驗的結果如何？"),
-        ("evaluation", "實驗是怎麼設計的？"),
-        ("cost", "成本與效率的比較結果是什麼？"),
-        ("related work", "與既有方法的差異在哪裡？"),
-    ):
-        if any(kw in t.lower() for t in titles) and len(seen) < 2:
-            seen.append(question)
-    return out + seen
+    extra: list[str] = []
+    for kw, question in _QUICK_BY_SECTION:
+        if any(kw in t.lower() for t in titles) and len(extra) < 2:
+            extra.append(question[lang])
+    return out + extra

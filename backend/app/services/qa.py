@@ -36,6 +36,17 @@ _DECLINED = re.compile(
 )
 
 
+_CJK = re.compile(r"[\u4e00-\u9fff\u3040-\u30ff]")
+
+
+def language_of(text: str) -> str:
+    """判斷提問語言。CJK 字元佔比超過一成即視為中文。"""
+    stripped = re.sub(r"\s", "", text)
+    if not stripped:
+        return "zh"
+    return "zh" if len(_CJK.findall(stripped)) / len(stripped) > 0.1 else "en"
+
+
 def declined(text: str) -> bool:
     """判斷回答是否為「文件未涵蓋」。
 
@@ -93,6 +104,7 @@ async def answer(
 
     route = r.name
     system = prompts.COMPARISON_SYSTEM if route == "comparison" else prompts.ANSWER_SYSTEM
+    system += prompts.LANGUAGE_DIRECTIVE[language_of(question)]
     prompt = prompts.ANSWER_USER.format(
         context=ctx.render(lambda c: _cite_label(c)), question=question
     )
@@ -319,6 +331,7 @@ async def answer_stream(
            "packed": len(ctx.blocks), "tokens": ctx.used_tokens, "budget": ctx.budget}
 
     system = prompts.COMPARISON_SYSTEM if r.name == "comparison" else prompts.ANSWER_SYSTEM
+    system += prompts.LANGUAGE_DIRECTIVE[language_of(question)]
     prompt = prompts.ANSWER_USER.format(context=ctx.render(_cite_label), question=question)
 
     yield {"type": "stage", "stage": "generating"}

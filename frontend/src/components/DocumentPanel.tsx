@@ -1,10 +1,6 @@
 import { useRef, useState } from "react";
 import type { DocSummary } from "../api";
-
-const STAGE_LABEL: Record<string, string> = {
-  queued: "排隊中", parsing: "解析中", indexing: "建立索引",
-  summarizing: "摘要準備中", ready: "就緒", failed: "無法解析",
-};
+import type { Strings } from "../i18n";
 
 export type Job = {
   docId: string;
@@ -20,13 +16,14 @@ type Props = {
   activeId: string | null;
   job: Job | null;
   error: string | null;
+  t: Strings;
   onSelect: (id: string) => void;
   onUpload: (file: File) => void;
   onUploadUrl: (url: string) => void;
 };
 
 export function DocumentPanel({
-  documents, activeId, job, error, onSelect, onUpload, onUploadUrl,
+  documents, activeId, job, error, t, onSelect, onUpload, onUploadUrl,
 }: Props) {
   const input = useRef<HTMLInputElement>(null);
   const [url, setUrl] = useState("");
@@ -34,7 +31,7 @@ export function DocumentPanel({
 
   return (
     <aside className="w-60 shrink-0 flex flex-col gap-2 p-3 border-r border-line">
-      <h2 className="text-xs text-ink-soft px-1">文件</h2>
+      <h2 className="text-xs text-ink-soft px-1">{t.documents}</h2>
 
       {documents.map((d) => {
         const active = d.doc_id === activeId;
@@ -48,11 +45,13 @@ export function DocumentPanel({
           >
             <div className="truncate font-medium">{d.filename}</div>
             <div className="text-xs text-ink-soft mt-0.5">
-              {d.pages} 頁 · {d.chunks} 個片段
+              {t.pages(d.pages ?? 0)} · {t.passages(d.chunks ?? 0)}
             </div>
             <div className="mt-1.5 flex items-center gap-1.5">
-              <Badge stage="ready" />
-              {d.tables ? <span className="text-xs text-ink-faint">{d.tables} 張表</span> : null}
+              <Badge stage="ready" t={t} />
+              {d.tables ? (
+                <span className="text-xs text-ink-faint">{t.tables(d.tables)}</span>
+              ) : null}
             </div>
           </button>
         );
@@ -65,13 +64,14 @@ export function DocumentPanel({
           <div className="truncate font-medium text-ink-soft">{job.filename}</div>
           {job.pages ? (
             <div className="mt-0.5 text-xs text-ink-soft">
-              {job.pages} 頁{job.chunks ? ` · ${job.chunks} 個片段` : ""}
-              {job.tables ? ` · ${job.tables} 張表` : ""}
+              {t.pages(job.pages)}
+              {job.chunks ? ` · ${t.passages(job.chunks)}` : ""}
+              {job.tables ? ` · ${t.tables(job.tables)}` : ""}
             </div>
           ) : null}
           <div className="mt-1.5 flex flex-col gap-1">
-            <Badge stage={job.stage} />
-            <span className="text-xs text-ink-faint">處理中，可繼續使用其他文件</span>
+            <Badge stage={job.stage} t={t} />
+            <span className="text-xs text-ink-faint">{t.stillProcessing}</span>
           </div>
         </div>
       )}
@@ -81,8 +81,8 @@ export function DocumentPanel({
         className="rounded-lg border border-dashed border-line-strong p-4 text-center
                    hover:border-accent hover:bg-accent-soft/40 transition-colors"
       >
-        <div>拖曳 PDF 到這裡</div>
-        <div className="text-xs text-ink-soft mt-0.5">PDF · 最大 30MB</div>
+        <div>{t.dropPdf}</div>
+        <div className="text-xs text-ink-soft mt-0.5">{t.pdfLimit}</div>
       </button>
       <input
         ref={input} type="file" accept="application/pdf" className="hidden"
@@ -90,7 +90,7 @@ export function DocumentPanel({
       />
 
       <div className="flex flex-col gap-1">
-        <label className="text-xs text-ink-soft px-1">或貼上連結</label>
+        <label className="text-xs text-ink-soft px-1">{t.orPasteLink}</label>
         <div className="flex gap-1">
           <input
             value={url}
@@ -99,7 +99,7 @@ export function DocumentPanel({
               if (e.key === "Enter" && url.trim()) { onUploadUrl(url.trim()); setUrl(""); }
             }}
             disabled={busy}
-            placeholder="arXiv 網址或 PDF 連結"
+            placeholder={t.linkPlaceholder}
             className="flex-1 min-w-0 rounded-lg border border-line bg-surface px-2 py-1.5
                        text-xs outline-none focus:border-accent disabled:bg-surface-sunk"
           />
@@ -109,7 +109,7 @@ export function DocumentPanel({
             className="rounded-lg border border-line px-2 text-xs disabled:opacity-40
                        hover:border-accent hover:text-accent-deep transition-colors"
           >
-            匯入
+            {t.import}
           </button>
         </div>
       </div>
@@ -119,7 +119,7 @@ export function DocumentPanel({
   );
 }
 
-function Badge({ stage }: { stage: string }) {
+function Badge({ stage, t }: { stage: string; t: Strings }) {
   const ready = stage === "ready";
   const failed = stage === "failed";
   return (
@@ -128,7 +128,7 @@ function Badge({ stage }: { stage: string }) {
         : ready ? "bg-accent-soft text-accent-deep"
         : "bg-amber-50 text-amber-800"
     }`}>
-      {STAGE_LABEL[stage] ?? stage}
+      {t.stage[stage] ?? stage}
     </span>
   );
 }
