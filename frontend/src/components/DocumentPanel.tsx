@@ -32,9 +32,12 @@ export function DocumentPanel({
   const busy = job !== null && job.stage !== "ready" && job.stage !== "failed";
 
   return (
-    <aside className="w-60 shrink-0 flex flex-col gap-2 p-3 border-r border-line">
-      <h2 className="text-xs text-ink-soft px-1">{t.documents}</h2>
+    <aside className="w-60 shrink-0 flex flex-col border-r border-line">
+      <h2 className="text-xs text-ink-soft px-4 pt-3 pb-1">{t.documents}</h2>
 
+      {/* 清單自行捲動；上傳與連結固定在下方。
+          先前整個側欄是同一個流，文件到六份時控制項就被擠出畫面。 */}
+      <div className="flex-1 min-h-0 overflow-y-auto flex flex-col gap-2 px-3 pb-2">
       {documents.map((d) => {
         const active = d.doc_id === activeId;
         const asking = confirming === d.doc_id;
@@ -118,9 +121,12 @@ export function DocumentPanel({
         </div>
       )}
 
+      </div>
+
+      <div className="shrink-0 flex flex-col gap-2 px-3 pb-3 pt-2 border-t border-line">
       <button
         onClick={() => input.current?.click()}
-        className="rounded-lg border border-dashed border-line-strong p-4 text-center
+        className="rounded-lg border border-dashed border-line-strong p-3 text-center
                    hover:border-accent hover:bg-accent-soft/40 transition-colors"
       >
         <div>{t.dropPdf}</div>
@@ -157,6 +163,7 @@ export function DocumentPanel({
       </div>
 
       {error && <p className="text-xs text-red-700 px-1 leading-relaxed">{error}</p>}
+      </div>
     </aside>
   );
 }
