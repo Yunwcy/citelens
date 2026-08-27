@@ -220,7 +220,13 @@ python scripts/bench_embedding.py onnx e5-small bge-zh zh    # 向量化模型�
 python scripts/report.py --container --md docs/results/runtime.md  # 執行指標
 ```
 
-`docs/results/` 底下每一份報表都由上述指令產生，無手寫數字。
+`docs/results/` 底下每一份報表都由上述指令產生。README 引用的數字
+由 `scripts/check_docs.py` 逐項核對，CI 於每次推送執行 —— 對不上即失敗：
+
+```bash
+python scripts/check_docs.py        # 核對
+python scripts/check_docs.py --fix  # 自動修正測試數量
+```
 
 ### 專案結構
 

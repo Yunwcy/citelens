@@ -26,8 +26,8 @@ jobs:
         run: python -m pytest tests -q
         working-directory: backend
 
-      - name: 檢查文件記載的測試數
-        run: python scripts/sync_test_count.py --check
+      - name: 檢查文件數字與產出一致
+        run: python scripts/check_docs.py
 
       - name: 產出評估數據
         run: python scripts/eval.py --md docs/results/retrieval.md
