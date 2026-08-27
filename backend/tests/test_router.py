@@ -53,3 +53,17 @@ def test_子查詢拆解可重現():
 
 def test_抽不出對象時退回單一查詢():
     assert qr.subqueries("compare them", []) == ["compare them"]
+
+
+def test_多區塊表格的每個區塊都能被路由命中(lightrag):
+    """t.columns 只保留最後一個區塊的命名 —— 用它建標籤集會漏掉其他區塊。
+
+    實測 Table 2 的 20 個欄鍵裡有 12 個不在 columns 內，
+    包含全部的 LightRAG 與 -High / -Low 欄。
+    """
+    from app.router import query_router
+
+    tables = {t.table_id: t for t in lightrag.tables}
+    for entity in ("LightRAG", "-High", "-Low", "-Origin", "NaiveRAG"):
+        r = query_router.route(f"{entity} 在 Legal 資料集上的 Diversity 是多少？", tables)
+        assert r.name == "table_lookup", f"{entity} 未走表格查詢，實得 {r.name}（{r.reason}）"

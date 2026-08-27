@@ -84,8 +84,16 @@ def _table_hit(question: str, tables: dict[str, Table]) -> tuple[str, list[str]]
         if t.kind != "data":
             continue
         labels = {lbl.split(" #")[0] for lbl, _ in t.rows}
-        for col in t.columns:
-            labels.update(part.strip() for part in col.split("/"))
+        # 用每一列實際的鍵，而不是 t.columns ——
+        # 多區塊表格的 columns 只保留最後一個區塊的命名，
+        # 實測 Table 2 的 20 個鍵裡有 12 個不在 columns 內，
+        # 其中包含全部的 LightRAG 與 -High / -Low 欄。
+        for vals in (v for _, v in t.rows):
+            for col in vals:
+                labels.update(part.strip() for part in col.split("/"))
+        # 區塊前綴本身也是可匹配的對象（「-High 在 Legal 的表現」）
+        for lbl, _ in t.rows:
+            labels.update(part.strip() for part in lbl.split("/"))
 
         matched = sorted(
             {lbl for lbl in labels if len(lbl) > 2 and lbl.lower() in q},
