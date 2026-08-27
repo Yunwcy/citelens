@@ -32,6 +32,11 @@ COST = Counter(
 CITED = Counter(
     "citelens_answer_cited_total", "答案有標註引用編號的次數", ["cited"], registry=REGISTRY,
 )
+OUTCOME = Counter(
+    "citelens_answer_outcome_total",
+    "回答結果：cited 有標註引用、uncited 有作答但未標註、declined 文件未涵蓋",
+    ["outcome"], registry=REGISTRY,
+)
 
 # --- 離線評估結果（由 scripts/eval.py 發布）---------------------------------
 EVAL_TOP3 = Gauge(
@@ -87,6 +92,14 @@ def observe(event: str, fields: dict) -> None:
         REQUEST_SECONDS.observe(fields.get("total_ms", 0) / 1000)
         COST.inc(fields.get("cost_usd", 0))
         CITED.labels(cited=str(fields.get("cited", True)).lower()).inc()
+        # 三分法：正確拒答不應計為「未標註引用」的失敗
+        if fields.get("declined"):
+            outcome = "declined"
+        elif fields.get("cited", True):
+            outcome = "cited"
+        else:
+            outcome = "uncited"
+        OUTCOME.labels(outcome=outcome).inc()
 
         # 摘要路由不走檢索也不組裝脈絡，其 token 與耗時為 0。
         # 一併記入直方圖會在圖上產生往下掉的假凹陷，

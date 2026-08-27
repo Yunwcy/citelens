@@ -25,6 +25,25 @@ from app.util import tokens
 
 _CITE = re.compile(r"\[(\d+)\]")
 
+# 依提示詞要求，文件未涵蓋該問題時模型應如實說明。
+# 這類回答本來就沒有可標註的來源，計為「未標註引用」等於把正確行為算成失敗。
+_DECLINED = re.compile(
+    r"未提及|沒有提及|未提到|沒有提到|未說明|沒有說明|未包含|沒有包含|"
+    r"未提供|沒有提供|無法回答|沒有相關(資訊|內容)|文件中(找不到|沒有)|"
+    r"does not (mention|contain|provide|include)|not mentioned|"
+    r"no information|cannot answer|is not (mentioned|provided|discussed)",
+    re.I,
+)
+
+
+def declined(text: str) -> bool:
+    """判斷回答是否為「文件未涵蓋」。
+
+    只在答案偏短時才判定：長篇回答即使出現「文件未提及某細節」的字樣，
+    整體仍是有實質內容的作答。
+    """
+    return bool(_DECLINED.search(text)) and len(text) < 400
+
 
 @dataclass(slots=True)
 class Source:
@@ -105,6 +124,7 @@ async def answer(
         embedding_backend=index.backend,
         n_sources=len(sources),
         cited=bool(sources and sources[0].cited),
+        declined=declined(result.text),
         **debug,
     )
     return Answer(text=result.text, sources=sources, debug=debug)
@@ -300,7 +320,8 @@ async def answer_stream(
     metrics.record("query", doc_id=index.doc_id, question=question,
                    model=settings.llm_model, embedding_backend=index.backend,
                    streamed=True, n_sources=len(sources),
-                   cited=bool(sources and sources[0].cited), **debug)
+                   cited=bool(sources and sources[0].cited),
+                   declined=declined(text), **debug)
 
     yield {"type": "done",
            "sources": [asdict(s) for s in sources],

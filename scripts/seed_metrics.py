@@ -19,16 +19,35 @@ import httpx
 
 BASE = "http://localhost:8000"
 
-QUESTIONS = [
-    ("summary this document", "summary"),
-    ("compare lightRAG with GraphRAG", "comparison"),
-    ("Performance of ablated versions of LightRAG", "qa"),
-    ("消融實驗的結果如何？", "qa"),
-    ("LightRAG 和 GraphRAG 有什麼差別", "comparison"),
-    ("What datasets were used in the evaluation?", "qa"),
-    ("摘要這份文件", "summary"),
-    ("實驗是怎麼設計的？", "qa"),
+# 通用問題：任何論文都適用
+GENERIC = [
+    "summary this document",
+    "摘要這份文件",
+    "What datasets were used in the evaluation?",
+    "這篇論文用了哪些資料集？",
+    "實驗是怎麼設計的？",
+    "比較文中提到的方法",
+    "找出表格中的數據",
+    "What are the main contributions?",
 ]
+
+# 文件專屬問題：關鍵字命中檔名或標題時才使用。
+# 先前版本對所有文件隨機發問，導致把 LightRAG 的問題丟給 BERT 論文 ——
+# 模型正確回答「文件未提及」，卻在指標上被計為「未標註引用」的失敗。
+SPECIFIC = {
+    "LightRAG": ["compare lightRAG with GraphRAG", "LightRAG 和 GraphRAG 有什麼差別",
+                 "Performance of ablated versions of LightRAG", "消融實驗的結果如何？"],
+    "BERT": ["What is masked language modeling?", "BERT 的預訓練任務是什麼？"],
+    "Attention": ["What is multi-head attention?", "自注意力機制是怎麼運作的？"],
+    "Retrieval-Augmented": ["How does RAG combine retrieval and generation?"],
+    "Survey": ["What are the main categories discussed?"],
+}
+
+
+def questions_for(doc: dict) -> list[str]:
+    name = f"{doc.get('filename','')} {doc.get('source_name','')}"
+    extra = [qs for key, qs in SPECIFIC.items() if key.lower() in name.lower()]
+    return GENERIC + [q for group in extra for q in group]
 
 
 async def ask(client: httpx.AsyncClient, doc: str, q: str) -> dict | None:
@@ -61,10 +80,10 @@ async def main() -> None:
 
     async with httpx.AsyncClient() as c:
         while time.perf_counter() < deadline:
-            batch = [
-                ask(c, random.choice(docs)["doc_id"], random.choice(QUESTIONS)[0])
-                for _ in range(random.randint(1, args.concurrent))
-            ]
+            batch = []
+            for _ in range(random.randint(1, args.concurrent)):
+                doc = random.choice(docs)
+                batch.append(ask(c, doc["doc_id"], random.choice(questions_for(doc))))
             for r in await asyncio.gather(*batch):
                 n += 1
                 if r:
