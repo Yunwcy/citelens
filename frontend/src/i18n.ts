@@ -32,6 +32,7 @@ export interface Strings {
   summaryStepLabel: Record<string, string>;
   stripMode: Record<string, string>;
   declinedBadge: string;
+  truncatedBadge: string;
 
   sources: string;
   retrievedPassages: string;
@@ -97,6 +98,7 @@ export const STRINGS: Record<Lang, Strings> = {
       qa: "混合檢索", comparison: "多路檢索", table_lookup: "表格定位", summary: "階層式摘要",
     },
     declinedBadge: "文件未涵蓋此問題",
+    truncatedBadge: "答案達長度上限，內容可能不完整",
 
     sources: "引用來源",
     retrievedPassages: "檢索到的片段",
@@ -166,6 +168,7 @@ export const STRINGS: Record<Lang, Strings> = {
       table_lookup: "Table lookup", summary: "Hierarchical summarization",
     },
     declinedBadge: "Not covered by this document",
+    truncatedBadge: "Answer hit the length limit and may be incomplete",
 
     sources: "Sources",
     retrievedPassages: "Retrieved passages",

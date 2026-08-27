@@ -93,8 +93,14 @@ async def generate_stream(
     prompt: str,
     system: str | None = None,
     max_tokens: int | None = None,
+    meta: dict | None = None,
 ) -> AsyncIterator[str]:
-    """串流版本，供 SSE 使用。逐段吐出文字片段。"""
+    """串流版本，供 SSE 使用。逐段吐出文字片段。
+
+    meta 用來回報 finish_reason —— 沒有它，答案被長度上限截斷時
+    看起來就只是「一個比較短的回答」。實測消融題偶爾會產出兩倍長度的
+    版本並在表格中間被切斷，前端照樣把半張表渲染出來。
+    """
     messages = ([{"role": "system", "content": system}] if system else []) + [
         {"role": "user", "content": prompt}
     ]
@@ -107,6 +113,9 @@ async def generate_stream(
             stream=True,
         )
         async for chunk in stream:
-            delta = chunk.choices[0].delta.content
+            choice = chunk.choices[0]
+            if choice.finish_reason and meta is not None:
+                meta["finish_reason"] = choice.finish_reason
+            delta = choice.delta.content
             if delta:
                 yield delta

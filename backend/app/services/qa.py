@@ -139,7 +139,6 @@ async def answer(
         embedding_backend=index.backend,
         n_sources=len(sources),
         cited=bool(sources and sources[0].cited),
-        declined=declined(result.text),
         **debug,
     )
     return Answer(text=result.text, sources=sources, debug=debug)
@@ -366,7 +365,8 @@ async def answer_stream(
     yield {"type": "stage", "stage": "generating"}
     llm_started = time.perf_counter()
     parts: list[str] = []
-    async for piece in client.generate_stream(prompt, system=system):
+    llm_meta: dict = {}
+    async for piece in client.generate_stream(prompt, system=system, meta=llm_meta):
         parts.append(piece)
         yield {"type": "token", "text": piece}
 
@@ -383,6 +383,8 @@ async def answer_stream(
         "prompt_tokens": tokens.count(prompt) + tokens.count(system),
         "completion_tokens": tokens.count(text),
         "declined": declined(text),
+        # 撞到輸出長度上限 —— 答案是被切斷的，不是寫完的
+        "answer_truncated": llm_meta.get("finish_reason") == "length",
         "retrieval_ms": round(retrieval_ms, 1), "llm_ms": llm_ms,
         "total_ms": round((time.perf_counter() - started) * 1000, 1),
     }
@@ -393,8 +395,7 @@ async def answer_stream(
     metrics.record("query", doc_id=index.doc_id, question=question,
                    model=settings.llm_model, embedding_backend=index.backend,
                    streamed=True, n_sources=len(sources),
-                   cited=bool(sources and sources[0].cited),
-                   declined=declined(text), **debug)
+                   cited=bool(sources and sources[0].cited), **debug)
 
     yield {"type": "done",
            "sources": [asdict(s) for s in sources],

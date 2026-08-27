@@ -110,7 +110,7 @@ export default function App() {
     setBusy(true);
     setTurns((t) => [...t, {
       question, answer: "", sources: [], debug: null,
-      stage: null, progress: null, declined: false,
+      stage: null, progress: null, declined: false, truncated: false,
     }]);
 
     const patch = (fn: (t: Turn) => Turn) =>
@@ -133,6 +133,7 @@ export default function App() {
           patch((t) => ({
             ...t, sources: ev.sources, debug: ev.debug,
             stage: null, progress: null, declined: ev.debug.declined === true,
+            truncated: ev.debug.answer_truncated === true,
           }));
       }
     } catch (e: any) {

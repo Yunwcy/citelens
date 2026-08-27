@@ -43,3 +43,37 @@ def test_空白問題被擋下(client):
 
 def test_找不到工作回_404(client):
     assert client.get("/api/jobs/nope/events").status_code == 404
+
+
+async def _fake_stream(prompt, system=None, **kw):
+    """假的模型：只吐固定文字，讓串流路徑可以在沒有 API key 的情況下跑完。"""
+    for piece in ("依據文件，", "雙層檢索分為低階與高階 [1]。"):
+        yield piece
+
+
+def test_串流問答能跑完整條路徑(lightrag_index, monkeypatch):
+    """這條路徑原本沒有任何測試 —— 於是 metrics.record 收到重複的
+    declined 關鍵字時，答案已經串流出去、卻在送出 done 之前就中斷。
+
+    症狀是前端拿不到來源與 debug，但畫面上答案看起來是好的：
+    又一個不會報錯的錯。
+    """
+    import asyncio
+
+    from app.llm import client
+    from app.services import qa
+
+    monkeypatch.setattr(client, "generate_stream", _fake_stream)
+
+    async def run():
+        return [e async for e in qa.answer_stream(lightrag_index, "什麼是雙層檢索？")]
+
+    events = asyncio.run(run())
+    kinds = [e["type"] for e in events]
+    assert kinds[0] == "route"
+    assert "token" in kinds
+    assert kinds[-1] == "done", f"串流未正常結束：{kinds[-3:]}"
+
+    done = events[-1]
+    assert "sources" in done and "debug" in done
+    assert "declined" in done["debug"]

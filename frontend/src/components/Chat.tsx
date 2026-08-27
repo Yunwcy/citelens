@@ -13,6 +13,8 @@ export type Turn = {
   progress: { phase: string; done: number; total: number } | null;
   /** 模型判定文件未涵蓋此問題。 */
   declined: boolean;
+  /** 答案撞到輸出長度上限而被切斷。 */
+  truncated: boolean;
 };
 
 type Props = {
@@ -64,6 +66,12 @@ export function Chat({ turns, quickQuestions, ready, busy, t, onAsk, onCite }: P
 
             {turn.answer && (
               <div className="max-w-[92%] leading-relaxed">
+                {turn.truncated && (
+                  <p className="mb-2 inline-flex items-center gap-1.5 rounded-lg border
+                                border-amber-300 bg-amber-50 px-2 py-1 text-xs text-amber-900">
+                    <span aria-hidden="true">◍</span>{t.truncatedBadge}
+                  </p>
+                )}
                 {turn.declined && (
                   <p className="mb-2 inline-flex items-center gap-1.5 rounded-lg border
                                 border-amber-300 bg-amber-50 px-2 py-1 text-xs text-amber-900">
