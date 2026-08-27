@@ -120,6 +120,23 @@ def observe(event: str, fields: dict) -> None:
         TABLES.labels(validated="false").inc(max(fields.get("tables", 0) - ok, 0))
 
 
+def replay(rows: list[dict]) -> int:
+    """重啟後由既有紀錄還原計數器。
+
+    Prometheus 的 Counter 與 Histogram 都在行程記憶體裡，容器一重啟就歸零 ——
+    儀表板的累計成本會變回 $0、引用率與回答結果分布變成 No data，
+    但 metrics.jsonl 其實完整保留著。看起來像沒人用過，實際上只是忘了讀回來。
+
+    直方圖重放後的分位數會以整段歷史計算，而非近期視窗；
+    這對「累計」型面板是正確的，對延遲趨勢則仍以新進資料為準。
+    """
+    for row in rows:
+        event = row.get("event")
+        if event in ("query", "index"):
+            observe(event, row)
+    return len(rows)
+
+
 def publish_eval(report: dict) -> None:
     """把離線評估結果寫成 gauge，讓準確度與執行指標出現在同一張儀表板上。
 

@@ -23,6 +23,18 @@ async def lifespan(_: FastAPI):
 
     get_embedder()
 
+    # 重放既有的指標紀錄：Counter 與 Histogram 都在行程記憶體裡，
+    # 重啟後累計成本會變回 $0、引用率變成 No data，但紀錄其實還在。
+    from app.observability import metrics as _metrics
+    from app.observability import prom as _prom
+
+    try:
+        n = _prom.replay(_metrics.read_all())
+        if n:
+            log.info("已重放 %d 筆既有指標", n)
+    except Exception:  # noqa: BLE001
+        log.warning("指標重放失敗", exc_info=True)
+
     # 重新載入既有的評估結果：gauge 不會自行持久化，
     # 重啟後儀表板的準確度面板會變空白。
     eval_path = settings.storage_dir / "eval.json"
