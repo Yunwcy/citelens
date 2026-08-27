@@ -204,12 +204,28 @@ python -m app.mcp_server
 
 ```bash
 cd backend && python -m pytest tests -q                      # 59 項測試
-python scripts/e2e.py --generality                           # 端到端驗收（經 nginx）
+python scripts/check_docs.py                                 # 文件數字與產出一致
+python scripts/e2e.py --offline --generality --full          # 端到端驗收（經 nginx）
 ```
+
+三層互補，缺一層就會漏掉一類問題：
+
+| 層 | 涵蓋 | 抓不到什麼 |
+|---|---|---|
+| `pytest` | 元件邏輯、解析正確性、不變量 | 反向代理、真實 HTTP、容器行為 |
+| `check_docs.py` | 文件數字與產出一致 | 程式行為 |
+| `e2e.py` | 全鏈路：上傳大小限制、SSE、重啟保存、健康檢查、外部服務中斷 | 視覺呈現 |
 
 `pytest` 以 TestClient 在同一行程內執行，繞過反向代理；`scripts/e2e.py`
 一律連 nginx，涵蓋上傳大小限制、健康檢查代理、SSE 緩衝等只存在於代理層的行為。
-`--full` 另含重啟與停用後端的驗證，`--cold` 量測冷啟動。
+
+| 選項 | 額外涵蓋 |
+|---|---|
+| （無） | 服務、上傳、代表性查詢、引用、文件隔離 |
+| `--offline` | 模型無法連線時索引仍須成功（短暫重啟後端） |
+| `--generality` | 以其他三篇論文驗證與文件無關的規則 |
+| `--full` | 重啟後資料保存、停用後端時健康檢查須失敗 |
+| `--cold` | 先 down 再 up，量測冷啟動 |
 
 產生監控資料（時間序列面板需要一段連續的流量才看得出趨勢）：
 

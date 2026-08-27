@@ -247,6 +247,74 @@ def gate_generic_comparison(doc_id: str) -> None:
     check("有標註引用", bool(re.findall(r"\[\d+\]", r["text"])))
 
 
+def gate_offline() -> None:
+    """模型無法連線時，索引仍須成功。
+
+    整條索引管線只有「建立摘要」需要外部服務。那一步失敗時，
+    文件必須仍然是 ready 且可提問 —— 否則使用者會看到
+    「連線錯誤」，以為整份文件都沒上傳成功。
+
+    以指向黑洞的 OPENAI_BASE_URL 重啟後端來模擬，驗證後還原。
+    """
+    print("\n【模型無法連線】")
+    override = ROOT / ".e2e-offline.yml"
+    override.write_text(
+        "services:\n  backend:\n    environment:\n"
+        "      OPENAI_BASE_URL: http://127.0.0.1:9/v1\n",
+        encoding="utf-8",
+    )
+    try:
+        subprocess.run(["docker", "compose", "-f", "docker-compose.yml",
+                        "-f", str(override), "up", "-d", "backend"],
+                       cwd=ROOT, capture_output=True, text=True)
+        wait_ready()
+
+        # doc_id 由內容雜湊而來：已索引過的檔案會走快取捷徑直接回 ready，
+        # 根本不經過摘要那一步 —— 那樣就測不到要測的東西。先刪掉再上傳。
+        pdf = DOCS / "1810.04805.pdf"
+        for d in httpx.get(f"{BASE}/api/documents", timeout=30).json():
+            if "BERT" in d["filename"] or "offline" in d.get("source_name", ""):
+                httpx.delete(f"{BASE}/api/documents/{d['doc_id']}", timeout=30)
+
+        with pdf.open("rb") as fh:
+            r = httpx.post(f"{BASE}/api/documents", timeout=120,
+                           files={"file": ("offline.pdf", fh, "application/pdf")})
+        job_id = r.json()["job_id"]
+        check("上傳未走快取捷徑", r.json().get("stage") != "ready",
+              f"stage={r.json().get('stage')}")
+
+        stage, err, summary_ready = "", None, None
+        with httpx.stream("GET", f"{BASE}/api/jobs/{job_id}/events", timeout=300) as s_:
+            for line in s_.iter_lines():
+                if not line.startswith("data: "):
+                    continue
+                ev = json.loads(line[6:])
+                stage, err = ev["stage"], ev.get("error")
+                summary_ready = ev.get("summary_ready", summary_ready)
+                if stage in ("ready", "failed"):
+                    break
+
+        check("離線上傳仍完成索引", stage == "ready" and not err,
+              f"stage={stage}" + (f" error={err}" if err else ""))
+        check("摘要標記為未就緒", summary_ready is False, f"summary_ready={summary_ready}")
+
+        doc_id = r.json()["doc_id"]
+        detail = httpx.get(f"{BASE}/api/documents/{doc_id}", timeout=30)
+        check("離線上傳的文件可讀取", detail.status_code == 200, f"HTTP {detail.status_code}")
+
+        # 問答此時應該明確失敗，而不是回半截答案
+        a = ask(doc_id, "這份文件在講什麼？")
+        broke = bool(a["debug"].get("stream_error")) or not a["text"]
+        check("離線提問明確失敗而非半截答案", broke,
+              a["debug"].get("stream_error") or f"回了 {len(a['text'])} 字")
+    finally:
+        subprocess.run(["docker", "compose", "up", "-d", "backend"],
+                       cwd=ROOT, capture_output=True, text=True)
+        override.unlink(missing_ok=True)
+        wait_ready()
+        print("  （已還原連線）")
+
+
 def gate_isolation(doc_id: str) -> None:
     """A 文件不得污染 B 文件。"""
     print("\n【文件隔離】")
@@ -338,6 +406,8 @@ def main() -> int:
     ap.add_argument("--cold", action="store_true", help="先 down 再 up，量測冷啟動")
     ap.add_argument("--generality", action="store_true",
                     help="另外用其他文件驗證與文件無關的規則")
+    ap.add_argument("--offline", action="store_true",
+                    help="模擬模型無法連線，驗證索引仍成功（會短暫重啟後端）")
     args = ap.parse_args()
 
     print("端到端驗收　全程經由 nginx（:3000）")
@@ -355,6 +425,8 @@ def main() -> int:
     gate_golden(doc_id)
     gate_generic_comparison(doc_id)
     gate_isolation(doc_id)
+    if args.offline:
+        gate_offline()
     if args.generality:
         gate_generality([p for p in sorted(DOCS.glob("*.pdf")) if "2410.05779" not in p.name])
     if args.full:
