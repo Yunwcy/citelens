@@ -3,9 +3,17 @@ from app.config import settings
 
 
 def test_檢索預算符合作業限制():
-    """10K 的假設上限扣掉各項保留後，留給檢索內容的額度。"""
+    """10K 的假設上限扣掉各項保留後，留給檢索內容的額度。
+
+    斷言的是**不變量**而不是那個推導出來的數字：各項保留額調整時，
+    這項測試不該需要跟著改；它要守的是「加總不得超過作業假設的上限」。
+    """
     assert settings.max_context == 10_000
-    assert settings.retrieval_budget == 7_000
+    parts = (settings.system_reserved + settings.question_reserved
+             + settings.answer_reserved + settings.safety_margin)
+    assert settings.retrieval_budget == settings.max_context - parts
+    assert settings.retrieval_budget + parts == settings.max_context
+    assert settings.retrieval_budget > 0
 
 
 def test_片段長度不超過目標(lightrag):

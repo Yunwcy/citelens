@@ -64,7 +64,7 @@ cd frontend && npm install && npm run dev
 
 ```python
 retrieval_budget = max_context − system_reserved − question_reserved
-                   − answer_reserved − safety_margin      # = 7,000
+                   − answer_reserved − safety_margin      # = 6,000
 ```
 
 ---
@@ -77,7 +77,7 @@ retrieval_budget = max_context − system_reserved − question_reserved
 |---|---|---|
 | 文件解析不依賴外部服務 | 文件內容不外流，且結果可重現、不隨供應商版本變動 | 版面分析、章節偵測、表格抽取、向量化全部本地執行 |
 | 語言模型只做 text-to-text | 不綁定特定供應商的多模態能力，換模型不必改動管線 | 全專案僅一處呼叫模型，介面只接受與回傳字串 |
-| 脈絡上限視為 10K tokens | 小脈絡模型與長文件的組合是常態，不應假設能整份塞入 | 檢索內容硬性限制於 7,000 tokens，並實作 token 感知的組裝 |
+| 脈絡上限視為 10K tokens | 小脈絡模型與長文件的組合是常態，不應假設能整份塞入 | 檢索內容硬性限制於 6,000 tokens，並實作 token 感知的組裝 |
 
 ---
 
@@ -159,16 +159,16 @@ retrieval_budget = max_context − system_reserved − question_reserved
 
 | 結果 | 次數 |
 |---|---:|
-| 有標註引用 | 100 |
+| 有標註引用 | 277 |
 | 有作答但未標註引用 | **0** |
-| 文件未涵蓋而如實拒答 | 24 |
+| 文件未涵蓋而如實拒答 | 47 |
 
 引用率的分母排除拒答 —— 文件未涵蓋該問題時模型應如實說明，
 這類回答本來就沒有可標註的來源，計入會把正確行為算成失敗。
 
 ### 成本
 
-單次查詢平均 US$0.00093，脈絡用量中位數 2,243 / 7,000 tokens；
+單次查詢平均 US$0.000926，脈絡用量中位數 2,587 / 6,000 tokens；
 索引階段外部 API 呼叫 0 次（向量化全程本地）。
 
 ---
@@ -203,7 +203,7 @@ python -m app.mcp_server
 ## 開發
 
 ```bash
-cd backend && python -m pytest tests -q                      # 61 項測試
+cd backend && python -m pytest tests -q                      # 62 項測試
 python scripts/check_docs.py                                 # 文件數字與產出一致
 python scripts/e2e.py --offline --generality --full          # 端到端驗收（經 nginx）
 ```

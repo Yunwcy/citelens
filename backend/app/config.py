@@ -39,7 +39,10 @@ class Settings(BaseSettings):
     # --- Context budget ---------------------------------------------------
     # 作業假設 LLM max context = 10K，以下為切分方式
     max_context: int = 10_000
-    system_reserved: int = 800
+    # 依實際提示詞量測後設定，不是估計值：測試會斷言最大的系統提示
+    # 確實放得進這個額度。先前設 800 而實際為 1,544 —— 推導出的
+    # 檢索預算因此是錯的，而整個專案的主張正是「預算是算出來的」。
+    system_reserved: int = 1_800
     question_reserved: int = 200
     answer_reserved: int = 1_500
     safety_margin: int = 500

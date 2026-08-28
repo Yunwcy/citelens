@@ -412,7 +412,7 @@
     },
     {
       "id": 7,
-      "title": "脈絡用量（上限 7,000 tokens）",
+      "title": "脈絡用量（上限 6,000 tokens）",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
@@ -465,7 +465,7 @@
         "defaults": {
           "unit": "short",
           "decimals": 0,
-          "max": 7000,
+          "max": 6000,
           "min": 0,
           "custom": {
             "lineWidth": 2,
@@ -487,7 +487,7 @@
               },
               {
                 "color": "#D9A441",
-                "value": 7000
+                "value": 6000
               }
             ]
           }

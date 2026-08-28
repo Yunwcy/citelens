@@ -32,7 +32,9 @@ def test_捨棄與裁切都要留下紀錄():
 
 def test_表格永不裁切():
     """少了幾列的表格會讓模型讀出錯誤的欄列對應，比沒有這張表更危險。"""
-    ctx = pack([_chunk("t", 6900, kind="table_full", table_id="T1"),
+    # 依實際預算取值，不寫死：預算調整時這項測試不該跟著壞
+    almost_all = settings.retrieval_budget - 100
+    ctx = pack([_chunk("t", almost_all, kind="table_full", table_id="T1"),
                 _chunk("u", 900, kind="table_row", table_id="T1")])
     assert "u" in ctx.dropped
     assert "u" not in ctx.truncated
@@ -89,3 +91,24 @@ def test_比較類問題的整表只保留被點名的列(lightrag):
     assert rows, "整表列全被濾掉了"
     assert all("GraphRAG" in r for r in rows), "留下了非 GraphRAG 區塊的列"
     assert "兩兩對比" in shown, "警語不應被濾掉"
+
+
+def test_系統提示放得進保留額度():
+    """system_reserved 必須反映提示詞的實際大小。
+
+    先前設 800，而實際的系統提示是 1,544 tokens —— 推導出的檢索預算
+    因此是錯的。這個專案主張「預算是算出來的」，那算式裡就不能有估計值。
+
+    提示詞每加一條規則都會變長，所以這件事必須由測試守著，不能靠記得。
+    """
+    from app.config import settings
+    from app.llm import prompts
+    from app.util import tokens
+
+    longest_directive = max(tokens.count(d) for d in prompts.LANGUAGE_DIRECTIVE.values())
+    for name in ("ANSWER_SYSTEM", "COMPARISON_SYSTEM"):
+        n = tokens.count(getattr(prompts, name)) + longest_directive
+        assert n <= settings.system_reserved, (
+            f"{name} 連同語言指令共 {n} tokens，超過 system_reserved "
+            f"{settings.system_reserved} —— 請調高保留額或精簡提示詞"
+        )

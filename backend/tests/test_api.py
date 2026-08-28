@@ -17,7 +17,9 @@ def client():
 def test_健康檢查回報檢索預算(client):
     r = client.get("/health")
     assert r.status_code == 200
-    assert r.json()["retrieval_budget"] == 7000
+    from app.config import settings
+
+    assert r.json()["retrieval_budget"] == settings.retrieval_budget
 
 
 def test_只接受_pdf_副檔名(client):

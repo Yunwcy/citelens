@@ -223,6 +223,14 @@ def gate_golden(doc_id: str) -> None:
         if not any(v in ln and len(re.sub(r"[\s*`]", "", ln)) >= 60
                    for ln in prose.split("\n"))
     ]
+    # 結論不得與同一則回答裡的表格矛盾。實測 48 組比較中有 8 組變體優於
+    # 完整版，「在所有資料集與指標上都優於各變體」是明確的錯誤陳述。
+    overclaim = re.search(
+        r"(outperform\w*|優於|优于)[^.。\n]{0,60}?(all|所有)"
+        r"[^.。\n]{0,40}(dataset|metric|資料集|指標|variant|變體)", c["text"], re.I)
+    check("③ 消融　結論未做全稱誤述", not overclaim,
+          overclaim.group(0)[:70] if overclaim else "已依證據限定")
+
     check("③ 消融　每個變體在表格之外都有敘述", not undescribed,
           f"只出現在表格中：{undescribed}" if undescribed
           else f"{len(variants)} 個變體皆有說明")
@@ -334,6 +342,24 @@ def gate_offline() -> None:
         print("  （已還原連線）")
 
 
+def gate_tally(doc_id: str) -> None:
+    """兩兩對比表要附上算好的勝負場次。
+
+    要求模型「逐一核對四個資料集再下結論」並不可靠 ——
+    提示詞明文禁止全稱說法之後，實測仍有 5/5 寫出「在所有資料集上都優於」，
+    而表格裡有一個資料集是相反的。改為由表格算好附在列尾，才降到 0/6。
+    """
+    print("\n【表格統計】")
+    r = httpx.get(f"{BASE}/api/documents/{doc_id}", timeout=30).json()
+    data = [t for t in r["tables"] if t["kind"] == "data"]
+    check("文件含數值型表格", bool(data), f"{len(data)} 張")
+    a = ask(doc_id, "compare lightRAG with GraphRAG")
+    check("比較答案採用了算好的統計而非全稱",
+          not re.search(r"(outperform\w*|優於)[^.。\n]{0,60}?(all|所有)"
+                        r"[^.。\n]{0,40}(dataset|資料集)", a["text"], re.I),
+          "已依統計限定")
+
+
 def gate_isolation(doc_id: str) -> None:
     """A 文件不得污染 B 文件。"""
     print("\n【文件隔離】")
@@ -443,6 +469,7 @@ def main() -> int:
     doc_id = gate_upload()
     gate_golden(doc_id)
     gate_generic_comparison(doc_id)
+    gate_tally(doc_id)
     gate_isolation(doc_id)
     if args.offline:
         gate_offline()

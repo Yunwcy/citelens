@@ -442,10 +442,48 @@ PAIRWISE_WARNING = (
 )
 
 
+def _tally(label: str, vals: dict[str, str]) -> str:
+    """兩兩對比列的勝負場次，直接算好附在列尾。
+
+    模型不可靠地執行「逐一核對四個資料集再下結論」這件事 ——
+    實測即使提示詞明文禁止全稱說法，仍會寫出「在所有資料集上都優於」，
+    而表格裡其實有一個資料集是相反的。
+
+    這是可以由資料直接算出來的事實，因此算好給它，而不是要求它自己數。
+    與逐列線性化同一個原理：讓資料自己說明自己。
+    """
+    opponent = label.split(" / ")[0].strip()
+    groups: dict[str, dict[str, float]] = {}
+    for col, val in vals.items():
+        m = _PERCENT.fullmatch(val.strip())
+        if not m:
+            return ""
+        ds, who = (col.split(" / ") + [""])[:2]
+        groups.setdefault(ds.strip(), {})[who.strip()] = float(m.group(1))
+
+    subject_wins, losses, total = 0, [], 0
+    subject = ""
+    for ds, pair in groups.items():
+        others = [k for k in pair if k != opponent]
+        if len(pair) != 2 or len(others) != 1:
+            return ""
+        subject = others[0]
+        total += 1
+        if pair[subject] > pair[opponent]:
+            subject_wins += 1
+        else:
+            losses.append(ds)
+    if total < 2 or not subject:
+        return ""
+    note = f"（本列統計：{subject} 在 {total} 個資料集中勝 {subject_wins}"
+    return note + (f"，落後於 {opponent} 的是：{'、'.join(losses)}）" if losses else "，無例外）")
+
+
 def linearize(table: Table) -> list[str]:
     """逐列轉成「欄名 = 值」的自然語言，讓關鍵字與語意檢索都能命中。"""
     head = f"【{table.caption or table.table_id} · p.{table.page}】"
     return [
         f"{head} {label}：" + "；".join(f"{col} = {val}" for col, val in vals.items())
+        + _tally(label, vals)
         for label, vals in table.rows
     ]
