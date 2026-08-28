@@ -67,9 +67,16 @@ def build(rows: list[dict]) -> str:
                 f"| 累計成本 | US${cost:.4f} |", "",
                 "## 回答品質", "", "| 結果 | 次數 |", "|---|---:|"]
 
-        # 引用率的分母排除拒答：文件未涵蓋該問題時，模型應如實說明，
-        # 這類回答本來就沒有可標註的來源，計入會把正確行為算成失敗。
-        answered = [r for r in qry if "cited" in r]
+        # 分母只計「真的產生了答案」的那些。
+        #
+        # 排除拒答：文件未涵蓋該問題時模型應如實說明，這類回答本來就沒有
+        # 可標註的來源，計入會把正確行為算成失敗。
+        #
+        # 排除連線中斷：串流失敗時根本沒有答案，卻會被記成 cited=False。
+        # 實測離線驗收跑過幾輪之後，引用率由 100% 掉到 97% —— 那 16 筆
+        # 全部是 APIConnectionError，不是模型忘了標引用。
+        answered = [r for r in qry if "cited" in r and not r.get("stream_error")]
+        broken_n = sum(1 for r in qry if r.get("stream_error"))
         declined_n = sum(1 for r in answered if r.get("declined"))
         cited_n = sum(1 for r in answered if r.get("cited") and not r.get("declined"))
         uncited_n = len(answered) - cited_n - declined_n
@@ -77,6 +84,7 @@ def build(rows: list[dict]) -> str:
         out += [f"| 有標註引用 | {cited_n} |",
                 f"| 有作答但未標註引用 | {uncited_n} |",
                 f"| 文件未涵蓋而如實拒答 | {declined_n} |",
+                f"| 連線中斷而未產生答案 | {broken_n} |",
                 f"| **有作答時的引用率** | **{rate}** |", "",
                 "## 路由分布", "", "| 路由 | 次數 |", "|---|---:|"]
         routes: dict[str, int] = {}
