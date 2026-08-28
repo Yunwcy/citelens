@@ -33,6 +33,16 @@ _MAX_GROUP_TOKENS = 3_500      # 超過此長度的一級章節改以其子章�
 _SECTION_SUMMARY_TOKENS = 700  # 每段章節摘要的長度上限
 
 
+# 同一份文件同時只允許一次建立：摘要改到背景執行後，
+# 使用者可能在建立中途就要求摘要 —— 沒有鎖的話會啟動第二次，
+# 兩邊都寫 summary.json，而且白花一倍的模型呼叫。
+_build_locks: dict[str, asyncio.Lock] = {}
+
+
+def _lock_for(doc_id: str) -> asyncio.Lock:
+    return _build_locks.setdefault(doc_id, asyncio.Lock())
+
+
 async def build(
     doc_id: str,
     sections: list[Section],
@@ -48,6 +58,11 @@ async def build(
     十四秒的空白畫面會被當成當機，而這正好是最值得展示的一段。
     """
     note = on_progress or (lambda *_: None)
+    async with _lock_for(doc_id):
+        return await _build(doc_id, sections, lang, note)
+
+
+async def _build(doc_id: str, sections: list[Section], lang: str, note) -> dict:
     path = settings.storage_dir / doc_id / "summary.json"
     if path.exists():
         data = json.loads(path.read_text(encoding="utf-8"))
@@ -56,10 +71,13 @@ async def build(
             data["summaries"] = {data.get("lang", "zh"): data.get("summary", "")}
         if lang in data.get("summaries", {}):
             return {**data, "summary": data["summaries"][lang], "lang": lang}
-        # 章節摘要已存在，只需補做該語言的整合
+        # 章節摘要已存在，只需補做該語言的整合。
+        # n_llm_calls 要反映「這次做了幾次」，不是原始建立時的次數 ——
+        # 否則補一個語言只花一次呼叫，指標卻記成十幾次。
         note("merge", 0, 1)
         data["summaries"][lang] = await _reduce(data["section_summaries"], lang)
         note("merge", 1, 1)
+        data["n_llm_calls"] = 1
         path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
         return {**data, "summary": data["summaries"][lang], "lang": lang}
 

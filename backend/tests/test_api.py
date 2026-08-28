@@ -102,10 +102,12 @@ def test_摘要失敗不得讓整份文件被判定為失敗(lightrag_pdf, monke
 
     async def run():
         job = await documents.submit(lightrag_pdf.name, lightrag_pdf.read_bytes())
+        # ready 在索引完成時就發出，摘要在背景繼續 ——
+        # 因此要多等一輪，直到背景任務補上 summary_ready
         for _ in range(600):
-            if job.done:
+            if job.done and "summary_ready" in job.detail:
                 break
-            await asyncio.sleep(0.5)
+            await asyncio.sleep(0.2)
         return job
 
     job = asyncio.run(run())

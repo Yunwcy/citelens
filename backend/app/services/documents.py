@@ -131,26 +131,41 @@ async def _run(job: Job, path: Path) -> None:
             async with _cache_lock:
                 _put(job.doc_id, idx)
 
-        # 摘要在鎖外執行：它是網路等待而非 CPU，不該擋住下一份文件的索引。
-        #
-        # 而且它是唯一需要外部服務的一步 —— 失敗不得讓整份文件被判定為失敗。
-        # 索引到這裡已經完成，文件可以提問；摘要在使用者真的要摘要時會重試。
-        # 實測拔掉網路上傳：解析、切塊、向量化全部成功，只有這一步失敗，
-        # 但介面顯示「連線錯誤」，看起來像整個上傳都沒成功。
-        job.emit("summarizing")
-        summary_ok = True
-        try:
-            await hierarchical.build(job.doc_id, res.sections)
-        except Exception as exc:                          # noqa: BLE001
-            summary_ok = False
-            log.warning("摘要建立失敗，文件仍可提問：%s", exc)
-        job.emit("ready", chunks=len(res.chunks), tables=len(res.tables),
-                 summary_ready=summary_ok)
+        # 索引完成即可提問 —— 摘要不該擋住其他問題。
+        # 先前是等摘要做完才發 ready，使用者要等 32 秒才能問任何問題，
+        # 即使那個問題根本不需要摘要。
+        job.emit("ready", chunks=len(res.chunks), tables=len(res.tables))
+        asyncio.create_task(_prebuild_summaries(job, res.sections))
 
     except Exception as exc:                              # noqa: BLE001
         log.exception("索引失敗 %s", job.doc_id)
         job.error = str(exc)
         job.emit("failed")
+
+
+async def _prebuild_summaries(job: Job, sections: list) -> None:
+    """在背景預建兩種語言的摘要。
+
+    摘要是整條管線唯一需要外部服務的一步，失敗不得讓文件被判定為失敗 ——
+    索引已經完成，文件可以提問。實測拔掉網路上傳：解析、切塊、向量化
+    全部成功，只有這一步失敗。
+
+    兩種語言都建：章節摘要只做一次（與語言無關），第二種語言只多一次
+    整合呼叫。介面是雙語的，只預建一種等於使用者切換語言後要現場等。
+    建立中途若有人要求摘要，hierarchical 的鎖會讓它等這次完成，
+    而不是另起一次。
+    """
+    job.emit("summarizing")
+    ok = True
+    try:
+        for lang in ("zh", "en"):
+            await hierarchical.build(job.doc_id, sections, lang)
+    except Exception as exc:                              # noqa: BLE001
+        ok = False
+        log.warning("摘要建立失敗，文件仍可提問：%s", exc)
+    # 沿用 ready 這個 stage，只補上細節 —— 換成別的 stage 會讓 job.done
+    # 由 True 變回 False，等待這個工作的呼叫端會就此空等。
+    job.emit("ready", summary_ready=ok)
 
 
 def get_job(job_id: str) -> Job | None:
