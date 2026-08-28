@@ -177,8 +177,12 @@ def gate_golden(doc_id: str) -> None:
           b["debug"].get("route", "?"))
     # 涵蓋面看的是答案談到哪些面向，不是引用到幾個章節 ——
     # 章節數取決於模型引用了誰，那不是系統可控的性質。
+    # 「架構」原本用 graph 比對 —— 而 graph 會命中 GraphRAG 這個名字本身，
+    # 只要提到對方就算涵蓋架構。實測答案完全沒有架構段落，斷言卻是綠的。
+    # 改為比對只有真的談機制才會出現的詞。
     dims = {
-        "架構": bool(re.search(r"(dual-level|雙層|graph|圖索引|retrieval paradigm)", b["text"], re.I)),
+        "架構": bool(re.search(r"(dual-level|雙層|low-level|high-level|communit|"
+                             r"incremental|增量|graph-based (text )?index)", b["text"], re.I)),
         "效能": bool(re.search(r"\d+\.\d+%", b["text"])),
         "成本": bool(re.search(r"(610,?000|token|cost|成本|API call)", b["text"], re.I)),
     }
@@ -207,6 +211,21 @@ def gate_golden(doc_id: str) -> None:
     c = ask(doc_id, "Performance of ablated versions of LightRAG")
     variants = [v for v in ("-High", "-Low", "-Origin") if v in c["text"]]
     check("③ 消融　三個變體都出現", len(variants) == 3, f"出現 {variants}")
+
+    # 數字全對但沒回答「這些數字代表什麼」——
+    # 表格會把自己的討論擠出前 K 名，實測解讀那段排到第 9。
+    #
+    # 判準不用關鍵字：模型換個同義詞（decline / reduced / lower）就會誤判。
+    # 改為檢查每個變體是否在**表格以外**的散文裡被談到，且有足夠的敘述長度。
+    prose = "\n".join(ln for ln in c["text"].split("\n") if not ln.strip().startswith("|"))
+    undescribed = [
+        v for v in variants
+        if not any(v in ln and len(re.sub(r"[\s*`]", "", ln)) >= 60
+                   for ln in prose.split("\n"))
+    ]
+    check("③ 消融　每個變體在表格之外都有敘述", not undescribed,
+          f"只出現在表格中：{undescribed}" if undescribed
+          else f"{len(variants)} 個變體皆有說明")
     check("③ 消融　以表格呈現", c["text"].count("|") > 20, f"{c['text'].count('|')} 個分隔符")
     check("③ 消融　答案沒有被截斷", not c["debug"].get("answer_truncated"),
           f"{c['debug'].get('completion_tokens', 0)} tokens"

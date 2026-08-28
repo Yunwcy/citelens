@@ -139,3 +139,22 @@ def test_刪除文件會同時清掉磁碟與快取(lightrag_pdf, monkeypatch, t
         assert await documents.delete(doc_id) is False    # 再刪一次應回報找不到
 
     asyncio.run(run())
+
+
+def test_提示詞不得寫入特定文件的內容():
+    """提示詞是給所有文件用的。
+
+    先前為了修某一篇論文的錯誤答案，把該論文的方法名稱與資料集名稱
+    寫成了「實測案例」—— 換一份文件時，那些例子就是誤導。
+    規則要通用，例子用佔位符。
+    """
+    from app.llm import prompts
+
+    text = "\n".join(
+        v for v in vars(prompts).values() if isinstance(v, str)
+    ) + "\n".join(str(v) for v in vars(prompts).values() if isinstance(v, dict))
+
+    leaked = [w for w in ("LightRAG", "GraphRAG", "NaiveRAG", "HyDE", "RQ-RAG",
+                          "Agriculture", "BERT", "Transformer")
+              if w in text]
+    assert not leaked, f"提示詞含特定文件的專有名詞：{leaked}"

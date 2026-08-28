@@ -102,6 +102,12 @@ def _expand_tables(chunks: list[Chunk], all_chunks: list[Chunk] | None) -> list[
     「消融版本的表現」時，檢索取回的是基準區塊的四列，
     模型就據此回答，完全沒有使用同在脈絡中的完整表格 ——
     答案裡沒有任何一個消融版本。
+
+    表格進入脈絡時，**同一節的討論文字也一併帶入**。
+    表格只有數字，數字的意義寫在正文裡 —— 而表格本身會把自己的討論擠出前 K 名：
+    實測問「消融版本的表現」時，前三名全是表格與表格列，
+    解讀那段排到第 9，「-Origin 意外沒有下降」那段連前 20 都沒有。
+    結果是答案把數字列得很完整，卻完全沒有回答「這些數字代表什麼」。
     """
     if not all_chunks:
         return chunks
@@ -129,13 +135,42 @@ def _expand_tables(chunks: list[Chunk], all_chunks: list[Chunk] | None) -> list[
             if tid not in emitted:
                 emitted.add(tid)
                 out.append(full_by_table[tid])
+                out.extend(_discussion_of(full_by_table[tid], all_chunks, chunks))
             continue
         if c.kind == "table_full" and tid:
             if tid in emitted:
                 continue
             emitted.add(tid)
+            out.append(c)
+            out.extend(_discussion_of(c, all_chunks, chunks))
+            continue
         out.append(c)
     return out
+
+
+_MAX_DISCUSSION_TOKENS = 700
+
+
+def _discussion_of(table: Chunk, all_chunks: list[Chunk], already: list[Chunk]) -> list[Chunk]:
+    """表格所屬章節的正文，依原文順序帶入，總量設上限。
+
+    表格給的是數字，數字的意義寫在正文裡。少了這段，
+    模型只能複述數值，答不出「這些數字代表什麼」。
+    """
+    if not table.section_id:
+        return []
+    have = {c.chunk_id for c in already}
+    picked, used = [], 0
+    for c in all_chunks:
+        if (c.kind != "text" or c.section_id != table.section_id
+                or c.chunk_id in have):
+            continue
+        n = c.n_tokens or 0
+        if used + n > _MAX_DISCUSSION_TOKENS:
+            break
+        picked.append(c)
+        used += n
+    return picked
 
 
 def _trim(text: str, limit: int) -> str:
