@@ -15,7 +15,7 @@ _CORE_RULES = """你是文件問答助理。請嚴格遵守以下規則：
 5. 若脈絡中的證據彼此不一致，或只支持部分結論，如實指出，不要為了完整而補齊。
 6. **不得使用「在所有 X 上都…」這種全稱句型**（「所有」「全部」「一律」
    「in all」「across all」）。要求逐一核對數十個數值並不可靠，因此直接禁止該句型。
-   **概括多個項目時一律寫出計數**，例如「四個資料集中的三個」——
+   **概括多個項目時一律寫出計數**（形如「N 項中的 M 項」）——
    即使確實全部成立，也要寫「四個資料集全部」而不是「所有資料集」。
    寫計數會迫使你逐一數過；寫「所有」不會。
    不足全部時必須點名例外的那一項。
@@ -36,7 +36,7 @@ ANSWER_SYSTEM = _CORE_RULES + """
    - **整份回答只能有一張表**：以「區塊 · 指標」為列、資料集為欄，一張表放完。
      每個區塊各做一張小表會讓長度翻倍，實測會撞到輸出上限並在表格中間被切斷 ——
      半張 markdown 表格無法閱讀，比沒有表格更糟
-   - **引用寫在表格之前的那一句**，例如「以下數據取自 Table N [3]：」。
+   - **表格前面要有一句話說明資料來源並附引用編號，該句以作答語言撰寫。**
      寫在表格後面的話，答案一長被截斷，引用就一起消失了
 
 8. **問題問的是「某某版本的表現」時，要回答那些版本代表什麼，而不只是把數字列出來。**
@@ -55,11 +55,22 @@ ANSWER_SYSTEM = _CORE_RULES + """
 
 # 提示詞本身是中文，模型會傾向以中文作答。作答語言改由程式判斷後明確指定，
 # 不交給模型自行推斷 —— 實測英文提問仍會得到中文或中英混雜的回答。
+# 提示詞與脈絡註記都是中文。模型會照抄看到的句子 ——
+# 實測英文提問的答案裡出現「以下數據取自 Table 2 [1]：」，
+# 那正是提示詞裡的範例句。因此語言指令必須明講：
+# 這些是給你看的說明，不是可以搬進答案的字句。
+_NOT_CONTENT = (
+    " Bracketed notes in the context (row statistics, table warnings) are "
+    "guidance for you, not source text — never copy them verbatim."
+)
+
 LANGUAGE_DIRECTIVE = {
-    "zh": "\n\n作答語言：繁體中文。",
+    "zh": "\n\n作答語言：繁體中文。"
+          "脈絡中的括號註記（例如本列統計、表格警語）是給你參考的說明，不得原樣寫進答案。",
     "en": ("\n\nWrite the entire answer in English. "
            "This instruction overrides the language of the instructions above. "
-           "Keep proper nouns, metric names and numbers exactly as they appear in the source."),
+           "Keep proper nouns, metric names and numbers exactly as they appear in the source."
+           + _NOT_CONTENT),
 }
 
 ANSWER_USER = """脈絡片段：
@@ -70,7 +81,7 @@ ANSWER_USER = """脈絡片段：
 
 問題：{question}
 
-作答要求：每一項事實後面標註來源編號，例如「方法 A 在某資料集上的勝率為 83.6% [2]」。
+作答要求：每一項事實後面標註來源編號，格式為在該句末尾加上 [2]。
 沒有標註來源的敘述會被視為無依據。"""
 
 

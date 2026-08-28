@@ -360,6 +360,28 @@ def gate_tally(doc_id: str) -> None:
           "已依統計限定")
 
 
+def gate_language(doc_id: str) -> None:
+    """作答語言必須與提問語言一致。
+
+    提示詞與脈絡註記都是中文，而模型會照抄看到的句子 ——
+    實測英文提問的答案裡出現「以下數據取自 Table 2 [1]：」，
+    那正是提示詞裡的範例句。因此範例不得寫成可直接搬用的完整句子。
+    """
+    print("\n【作答語言】")
+    cjk = re.compile(r"[\u4e00-\u9fff]")
+    for q in ("Performance of ablated versions of LightRAG",
+              "What datasets were used in the evaluation?"):
+        r = ask(doc_id, q)
+        m = cjk.search(r["text"])
+        line = next((ln for ln in r["text"].split("\n") if cjk.search(ln)), "")
+        check(f"英文提問無中文殘留　{q[:34]}", not m, line.strip()[:56] if m else "純英文")
+
+    for q in ("消融實驗的結果如何？", "實驗用了哪些資料集？"):
+        r = ask(doc_id, q)
+        check(f"中文提問有中文作答　{q}", bool(cjk.search(r["text"])),
+              "" if cjk.search(r["text"]) else "答案沒有中文")
+
+
 def gate_isolation(doc_id: str) -> None:
     """A 文件不得污染 B 文件。"""
     print("\n【文件隔離】")
@@ -470,6 +492,7 @@ def main() -> int:
     gate_golden(doc_id)
     gate_generic_comparison(doc_id)
     gate_tally(doc_id)
+    gate_language(doc_id)
     gate_isolation(doc_id)
     if args.offline:
         gate_offline()
