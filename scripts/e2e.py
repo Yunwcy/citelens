@@ -310,6 +310,8 @@ def gate_offline() -> None:
         check("上傳未走快取捷徑", r.json().get("stage") != "ready",
               f"stage={r.json().get('stage')}")
 
+        # ready 現在於索引完成時就發出，摘要在背景繼續 ——
+        # summary_ready 會在稍後的事件補上，不能在 ready 就中斷。
         stage, err, summary_ready = "", None, None
         with httpx.stream("GET", f"{BASE}/api/jobs/{job_id}/events", timeout=300) as s_:
             for line in s_.iter_lines():
@@ -317,8 +319,9 @@ def gate_offline() -> None:
                     continue
                 ev = json.loads(line[6:])
                 stage, err = ev["stage"], ev.get("error")
-                summary_ready = ev.get("summary_ready", summary_ready)
-                if stage in ("ready", "failed"):
+                if "summary_ready" in ev:
+                    summary_ready = ev["summary_ready"]
+                if stage == "failed" or summary_ready is not None:
                     break
 
         check("離線上傳仍完成索引", stage == "ready" and not err,

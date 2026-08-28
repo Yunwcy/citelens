@@ -49,7 +49,14 @@ class Job:
 
     @property
     def done(self) -> bool:
+        """索引完成即可提問。摘要在背景繼續，另以 finished 判定全部結束。"""
         return self.stage == "ready" or self.error is not None
+
+    @property
+    def finished(self) -> bool:
+        """含背景摘要在內全部結束。串流要等到這裡才關 ——
+        `ready` 之後還有一則補上 summary_ready 的事件。"""
+        return self.error is not None or "summary_ready" in self.detail
 
     def emit(self, stage: str, **detail) -> None:
         self.stage = stage
@@ -66,7 +73,7 @@ class Job:
             # 補送目前狀態，訂閱者晚到也不會錯過已發生的階段
             yield {"job_id": self.job_id, "doc_id": self.doc_id,
                    "stage": self.stage, "error": self.error, **self.detail}
-            while not self.done:
+            while not self.finished:
                 yield await q.get()
         finally:
             self._subscribers.remove(q)
