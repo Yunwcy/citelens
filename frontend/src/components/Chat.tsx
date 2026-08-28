@@ -66,14 +66,21 @@ export function Chat({ turns, quickQuestions, ready, busy, t, onAsk, onCite }: P
               <Waiting turn={turn} t={t} />
             )}
 
+            {/* 放在 answer 判斷之外：連線立刻失敗時一個字都沒有，
+                包在裡面等於整段不渲染 —— 使用者看到的是一片空白。 */}
+            {turn.broken && (
+              <p className="max-w-[92%] flex items-start gap-2 rounded-lg border
+                            border-red-300 bg-red-50 px-3 py-2 text-sm text-red-800">
+                <span aria-hidden="true" className="mt-0.5">◍</span>
+                <span>
+                  {t.streamErrorBadge}
+                  {turn.answer ? "" : ` ${t.retryHint}`}
+                </span>
+              </p>
+            )}
+
             {turn.answer && (
               <div className="max-w-[92%] leading-relaxed">
-                {turn.broken && (
-                  <p className="mb-2 inline-flex items-center gap-1.5 rounded-lg border
-                                border-red-300 bg-red-50 px-2 py-1 text-xs text-red-800">
-                    <span aria-hidden="true">◍</span>{t.streamErrorBadge}
-                  </p>
-                )}
                 {turn.truncated && (
                   <p className="mb-2 inline-flex items-center gap-1.5 rounded-lg border
                                 border-amber-300 bg-amber-50 px-2 py-1 text-xs text-amber-900">

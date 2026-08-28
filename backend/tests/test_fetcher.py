@@ -47,3 +47,15 @@ def test_拒絕內部位址(url):
 def test_無法解析的網域會被擋下():
     with pytest.raises(UnsafeUrl):
         _assert_safe("https://this-domain-should-not-exist-99999.invalid/a.pdf")
+
+
+def test_非_http_協定的訊息要說對原因():
+    """先前是無條件補上 https，ftp://x 變成 https://ftp://x，
+    最後失敗在 DNS 解析並回報「無法解析這個網域」—— 訊息與原因不符。"""
+    import pytest
+
+    from app.services.fetcher import UnsafeUrl, normalize
+
+    for url in ("ftp://example.com/a.pdf", "file:///etc/passwd", "gopher://x/1"):
+        with pytest.raises(UnsafeUrl, match="http"):
+            normalize(url)

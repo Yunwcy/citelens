@@ -4,11 +4,24 @@ from __future__ import annotations
 import logging
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.routes import Health, router
 from app.config import settings
+
+# Pydantic 的原始驗證錯誤是一整包內部結構（type / loc / ctx），
+# 直接回給前端等於把內部細節噴到畫面上。改成一句話。
+_VALIDATION_MESSAGE = {
+    "string_too_short": "不能是空的",
+    "string_too_long": "太長了",
+    "missing": "這個欄位是必填的",
+    "greater_than_equal": "數值太小",
+    "less_than_equal": "數值太大",
+    "int_parsing": "必須是整數",
+}
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 log = logging.getLogger(__name__)
@@ -60,6 +73,20 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+@app.exception_handler(RequestValidationError)
+async def _validation_error(_: Request, exc: RequestValidationError) -> JSONResponse:
+    """把驗證錯誤轉成一句話。
+
+    預設回的是 Pydantic 的內部結構（type / loc / ctx），
+    前端只會原樣顯示 —— 使用者看到的是一串看不懂的英文。
+    """
+    err = exc.errors()[0]
+    field = ".".join(str(x) for x in err.get("loc", ()) if x not in ("body", "query"))
+    reason = _VALIDATION_MESSAGE.get(err.get("type", ""), err.get("msg", "格式不正確"))
+    return JSONResponse(status_code=422,
+                        content={"detail": f"{field}{reason}" if field else reason})
+
+
 app.include_router(router)
 
 

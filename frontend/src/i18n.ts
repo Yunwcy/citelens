@@ -37,6 +37,7 @@ export interface Strings {
   declinedBadge: string;
   truncatedBadge: string;
   streamErrorBadge: string;
+  retryHint: string;
 
   sources: string;
   retrievedPassages: string;
@@ -106,7 +107,8 @@ export const STRINGS: Record<Lang, Strings> = {
     },
     declinedBadge: "文件未涵蓋此問題",
     truncatedBadge: "答案達長度上限，內容可能不完整",
-    streamErrorBadge: "與模型的連線中斷，答案並未寫完",
+    streamErrorBadge: "回答服務目前無法連線。",
+    retryHint: "文件已完成索引，恢復連線後再問一次即可。",
 
     sources: "引用來源",
     retrievedPassages: "檢索到的片段",
@@ -180,7 +182,8 @@ export const STRINGS: Record<Lang, Strings> = {
     },
     declinedBadge: "Not covered by this document",
     truncatedBadge: "Answer hit the length limit and may be incomplete",
-    streamErrorBadge: "The connection to the model dropped — this answer is unfinished",
+    streamErrorBadge: "The answering service is unreachable.",
+    retryHint: "The document is fully indexed — just ask again once the connection is back.",
 
     sources: "Sources",
     retrievedPassages: "Retrieved passages",

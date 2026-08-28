@@ -203,7 +203,7 @@ python -m app.mcp_server
 ## 開發
 
 ```bash
-cd backend && python -m pytest tests -q                      # 59 項測試
+cd backend && python -m pytest tests -q                      # 60 項測試
 python scripts/check_docs.py                                 # 文件數字與產出一致
 python scripts/e2e.py --offline --generality --full          # 端到端驗收（經 nginx）
 ```

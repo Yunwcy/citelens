@@ -70,9 +70,14 @@ def normalize(url: str) -> str:
         # 升級而非拒絕：貼上 http 連結是常見情形，且升級後安全性更高。
         # _assert_safe 仍會拒絕非 https —— 那道檢查守的是轉址的每一跳。
         url = "https://" + url[7:]
-    if not url.startswith("https://"):
-        url = "https://" + url
-    return url
+    if url.startswith("https://"):
+        return url
+    # 到這裡若仍有協定，就是 http/https 以外的東西。
+    # 先前是無條件補上 https，於是 ftp://x 變成 https://ftp://x，
+    # 最後失敗在 DNS 解析並回報「無法解析這個網域」—— 訊息與原因不符。
+    if "://" in url:
+        raise UnsafeUrl("只接受 http 或 https 連結")
+    return "https://" + url
 
 
 # --- 取得 -------------------------------------------------------------------

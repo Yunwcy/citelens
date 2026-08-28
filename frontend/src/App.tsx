@@ -6,6 +6,7 @@ import { DocumentPanel, type Job } from "./components/DocumentPanel";
 import { SourcePanel } from "./components/SourcePanel";
 
 const LANG_KEY = "citelens.lang";
+const HISTORY_KEY = "citelens.history";
 
 export default function App() {
   const [lang, setLang] = useState<Lang>(
@@ -24,7 +25,24 @@ export default function App() {
   const [quick, setQuick] = useState<string[]>([]);
   // 對話依文件保存。切換文件時清空會讓誤觸側欄＝刪除紀錄，
   // 而使用者常在讀答案時順手點到另一份文件。
-  const [history, setHistory] = useState<Record<string, Turn[]>>({});
+  // 對話寫進 sessionStorage：重新整理（Demo 時很容易手滑）不該讓紀錄消失。
+  // 用 session 而非 local：對話屬於這次工作階段，關掉分頁就該結束，
+  // 否則舊紀錄會無限累積。
+  const [history, setHistory] = useState<Record<string, Turn[]>>(() => {
+    try {
+      return JSON.parse(sessionStorage.getItem(HISTORY_KEY) ?? "{}");
+    } catch {
+      return {};
+    }
+  });
+
+  useEffect(() => {
+    try {
+      sessionStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+    } catch {
+      // 超出配額時放棄保存，但不影響使用 —— 對話仍在記憶體裡
+    }
+  }, [history]);
   const turns = activeId ? history[activeId] ?? [] : [];
   const setTurns = useCallback((fn: Turn[] | ((prev: Turn[]) => Turn[])) => {
     setHistory((all) => {
@@ -35,6 +53,10 @@ export default function App() {
     });
   }, []);
   const [busy, setBusy] = useState(false);
+  // busy 是 React state，更新是非同步的 —— 同一個 tick 內連按三次，
+  // 三次都會讀到 busy=false 而全部送出。實測結果是三個提問、一個答案，
+  // 因為三條串流都寫進了「最後一個」turn。守衛必須是同步的。
+  const busyRef = useRef(false);
 
   useEffect(() => { localStorage.setItem(LANG_KEY, lang); }, [lang]);
   useEffect(() => { activeIdRef.current = activeId; }, [activeId]);
@@ -147,7 +169,8 @@ export default function App() {
   }
 
   async function ask(question: string) {
-    if (!activeId) return;
+    if (!activeId || busyRef.current) return;
+    busyRef.current = true;
     setBusy(true);
     setTurns((t) => [...t, {
       question, answer: "", sources: [], debug: null,
@@ -185,6 +208,7 @@ export default function App() {
         stage: null, progress: null, broken: true,
       }));
     } finally {
+      busyRef.current = false;
       setBusy(false);
     }
   }
