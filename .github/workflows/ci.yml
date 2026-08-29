@@ -48,8 +48,10 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
       - run: npm ci
         working-directory: frontend
+      # tsconfig.json 是 solution 檔（"files": []），--noEmit 會掃 0 個檔案
+      # 而且照樣回傳成功。-b 才會沿著 references 進到真正的專案。
       - name: 型別檢查
-        run: npx tsc --noEmit
+        run: npx tsc -b --force
         working-directory: frontend
       - name: 建置
         run: npm run build

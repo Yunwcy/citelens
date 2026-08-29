@@ -19,4 +19,6 @@ frontend:
   stage: test
   image: node:22-alpine
   script:
-    - cd frontend && npm ci && npx tsc --noEmit && npm run build
+    # -b 而非 --noEmit：tsconfig.json 是 solution 檔（"files": []），
+    # --noEmit 會掃 0 個檔案並回傳成功
+    - cd frontend && npm ci && npx tsc -b --force && npm run build
