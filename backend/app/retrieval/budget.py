@@ -25,12 +25,15 @@ _MIN_USEFUL = 80          # 裁切後低於此長度就沒有保留價值
 class PackedContext:
     blocks: list[tuple[int, Chunk, str]] = field(default_factory=list)   # (引用編號, 片段, 實際文字)
     used_tokens: int = 0
+    # 這次實際採用的額度。問題較長時會低於預設值 —— 回報預設值會讓
+    # 介面與指標顯示一個沒有被使用的數字。
+    limit: int = 0
     dropped: list[str] = field(default_factory=list)                      # 被捨棄的片段編號
     truncated: list[str] = field(default_factory=list)
 
     @property
     def budget(self) -> int:
-        return settings.retrieval_budget
+        return self.limit or settings.retrieval_budget
 
     def render(self, cite: callable) -> str:
         """組成送進模型的脈絡文字。
@@ -52,6 +55,7 @@ def pack(
     chunks: list[Chunk],
     budget: int | None = None,
     all_chunks: list[Chunk] | None = None,
+    question: str | None = None,
 ) -> PackedContext:
     """依既有順序（已由檢索排序）組裝，不重新排序。
 
@@ -60,8 +64,11 @@ def pack(
     實測問「消融版本的表現」時，只取回基準區塊的四列，
     答案完全沒有涵蓋三個消融變體，卻看起來十分完整。
     """
-    budget = budget or settings.retrieval_budget
-    ctx = PackedContext()
+    # 問題比保留額長時，超出的部分從檢索額度扣掉 —— 否則總量會超過上限
+    if budget is None:
+        budget = (settings.budget_for(tokens.count(question)) if question
+                  else settings.retrieval_budget)
+    ctx = PackedContext(limit=budget)
 
     for chunk in _expand_tables(chunks, all_chunks):
         remaining = budget - ctx.used_tokens

@@ -117,7 +117,7 @@ class DocumentIndex:
             embedding_model=embedder.name,
             index_seconds=meta["index_seconds"],
             chunks_per_second=meta["chunks_per_second"],
-            api_calls=0 if backend != "openai" else len(res.chunks),
+            api_calls=0,   # 向量化全程本地，見 retrieval/embedding.py
         )
         return cls(doc_id, res.chunks, vectors, res.tables, meta, res.sections)
 

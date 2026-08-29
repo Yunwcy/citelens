@@ -112,3 +112,35 @@ def test_系統提示放得進保留額度():
             f"{name} 連同語言指令共 {n} tokens，超過 system_reserved "
             f"{settings.system_reserved} —— 請調高保留額或精簡提示詞"
         )
+
+
+def test_總量在最壞情況下也不超過作業上限():
+    """問題長度上限設在「字元」，但脈絡上限是以 token 計。
+
+    1,000 個字元實際可以是多少 token，取決於用字 ——
+    實測：英文約 223、常見中文約 1,779、罕見漢字約 2,499、emoji 可達 3,000。
+    保留額只有 200。照固定額度組裝的話，最壞情況會是
+    1800＋6000＋3000＋1500 = 12,300，**遠超過作業假設的 10,000**。
+
+    這個缺口不會以任何形式報錯：max_tokens 限制的是輸出，不會攔下過長的輸入；
+    而正常長度的問題永遠碰不到它。因此檢索額度必須依實際問題長度縮減。
+    """
+    from app.util import tokens
+
+    limit = 1000                                    # API 上的 max_length，單位是字元
+    questions = [
+        "短問題",
+        "What are the ablation results?",
+        ("這篇論文的消融實驗結果如何？" * 80)[:limit],   # 常見中文
+        ("龘鱻靐爩齉躞" * 200)[:limit],                # 罕見漢字：每字更多 token
+        ("🧬🜁🝱" * 400)[:limit],                      # 目前找到最耗 token 的輸入
+    ]
+    for question in questions:
+        q = tokens.count(question)
+        ctx = pack([_chunk(f"c{i}", 400) for i in range(40)], question=question)
+        total = (settings.system_reserved + ctx.used_tokens + q
+                 + settings.answer_reserved)
+        assert ctx.used_tokens <= ctx.budget, f"超出本次額度：{ctx.used_tokens} > {ctx.budget}"
+        assert total <= settings.max_context, (
+            f"問題 {q} tokens 時總量 {total} 超過上限 {settings.max_context}"
+        )

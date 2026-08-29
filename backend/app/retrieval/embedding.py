@@ -1,9 +1,9 @@
-"""向量化。單一介面，三個可切換後端。
+"""向量化。單一介面，數個可切換的本地後端。
 
-預設走本地 ONNX：文件解析與向量化全程不呼叫外部服務，
-`/metrics` 上的 indexing 階段 API 呼叫次數因此恆為 0。
-openai 後端僅在磁碟空間受限時使用，且不改變「模型只做 text-to-text」
-這條限制 —— 向量化收到的是本地已切好的純文字。
+所有後端一律在本地推論。作業限制要求文件不得交給現成的 gpt/gemini API 解析，
+因此這裡刻意不提供任何「把文件送到外部服務取向量」的選項 ——
+indexing 階段的 API 呼叫次數恆為 0，是結構上做不到，而不是預設值剛好如此。
+外部模型在本專案只出現在 `app/llm/client.py`，且只收字串、只回字串。
 """
 from __future__ import annotations
 
@@ -99,28 +99,6 @@ class FastEmbedBackend(Embedder):
         return _normalize(np.array(vec, dtype=np.float32))[0]
 
 
-class OpenAIBackend(Embedder):
-    """僅在磁碟受限時使用。預設不啟用，避免與作業限制產生模糊地帶。"""
-
-    def __init__(self, model_name: str):
-        from openai import OpenAI
-
-        self.name = model_name
-        self.dim = 1536
-        self._client = OpenAI(api_key=settings.openai_api_key)
-
-    def _embed(self, texts: list[str]) -> np.ndarray:
-        rsp = self._client.embeddings.create(model=self.name, input=texts)
-        return _normalize(np.array([d.embedding for d in rsp.data], dtype=np.float32))
-
-    def embed_passages(self, texts: list[str]) -> np.ndarray:
-        out = [self._embed(texts[i:i + 128]) for i in range(0, len(texts), 128)]
-        return np.vstack(out) if out else np.zeros((0, self.dim), dtype=np.float32)
-
-    def embed_query(self, text: str) -> np.ndarray:
-        return self._embed([text])[0]
-
-
 def _normalize(v: np.ndarray) -> np.ndarray:
     """L2 正規化後，內積即等於餘弦相似度。"""
     norms = np.linalg.norm(v, axis=-1, keepdims=True)
@@ -147,13 +125,10 @@ def get_embedder(backend: str | None = None, purpose: str = "query") -> Embedder
         embedder = FastEmbedBackend(settings.embedding_model_zh)
     elif backend == "onnx-large":
         embedder = FastEmbedBackend(settings.embedding_model_onnx_large)
-    elif backend == "openai":
-        embedder = OpenAIBackend(settings.embedding_model_openai)
     else:
         raise ValueError(f"未知的向量化後端：{backend}")
 
     # 預熱：首次推論有約一秒的一次性初始化成本。不預熱的話這筆帳會記在
     # 使用者的第一次查詢上，看起來像是檢索很慢，實際上檢索只要幾十毫秒。
-    if backend != "openai":
-        embedder.embed_query("warmup")
+    embedder.embed_query("warmup")
     return embedder

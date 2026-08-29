@@ -79,6 +79,22 @@ retrieval_budget = max_context − system_reserved − question_reserved
 | 語言模型只做 text-to-text | 不綁定特定供應商的多模態能力，換模型不必改動管線 | 全專案僅一處呼叫模型，介面只接受與回傳字串 |
 | 脈絡上限視為 10K tokens | 小脈絡模型與長文件的組合是常態，不應假設能整份塞入 | 檢索內容硬性限制於 6,000 tokens，並實作 token 感知的組裝 |
 
+三項約束皆由測試強制，而非僅止於慣例：
+
+| 測試 | 保證 |
+|---|---|
+| `test_constraints.py::test_只有一個檔案能連到外部模型服務` | 解析、切塊、向量化皆不觸及外部服務；模型呼叫只存在於 `llm/client.py` |
+| `test_constraints.py::test_模型介面只收字串只回字串` | 模型介面無非文字入口，訊息 `content` 不得為多模態的列表形狀 |
+| `test_constraints.py::test_向量化沒有外部後端可選` | 向量化後端清單中不存在外部服務選項 —— 預設值不是保證 |
+| `test_budget.py::test_系統提示放得進保留額度` | `system_reserved` 反映提示詞的實際 token 數，預算算式中沒有估計值 |
+| `test_budget.py::test_總量在最壞情況下也不超過作業上限` | 提示詞＋脈絡＋問題＋回答的最壞總量 ≤ 10,000 |
+
+其中最後一項處理的是一個不明顯的缺口：問題長度上限設在**字元**，
+而同樣 1,000 個字元的 token 數取決於用字 —— 實測英文約 223、常見中文約 1,779、
+emoji 可達 3,000，皆遠超過 200 的保留額。
+因此檢索額度改為依每次請求的實際問題長度計算（`Settings.budget_for`），而非固定值：
+問題越長，能放的文件內容越少，四項總和在任何輸入下都不超過 10,000。
+
 ---
 
 ## 運作方式
@@ -159,16 +175,16 @@ retrieval_budget = max_context − system_reserved − question_reserved
 
 | 結果 | 次數 |
 |---|---:|
-| 有標註引用 | 277 |
+| 有標註引用 | 144 |
 | 有作答但未標註引用 | **0** |
-| 文件未涵蓋而如實拒答 | 47 |
+| 文件未涵蓋而如實拒答 | 23 |
 
 引用率的分母排除拒答 —— 文件未涵蓋該問題時模型應如實說明，
 這類回答本來就沒有可標註的來源，計入會把正確行為算成失敗。
 
 ### 成本
 
-單次查詢平均 US$0.000926，脈絡用量中位數 2,587 / 6,000 tokens；
+單次查詢平均 US$0.000785，脈絡用量中位數 2,723 / 6,000 tokens；
 索引階段外部 API 呼叫 0 次（向量化全程本地）。
 
 ---
@@ -203,7 +219,7 @@ python -m app.mcp_server
 ## 開發
 
 ```bash
-cd backend && python -m pytest tests -q                      # 62 項測試
+cd backend && python -m pytest tests -q                      # 68 項測試
 python scripts/check_docs.py                                 # 文件數字與產出一致
 python scripts/e2e.py --offline --generality --full          # 端到端驗收（經 nginx）
 ```

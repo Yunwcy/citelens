@@ -19,6 +19,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "backend"))
 
+from app.config import settings  # noqa: E402
 from app.observability import metrics  # noqa: E402
 
 
@@ -32,9 +33,20 @@ def pct(values: list[float], p: float) -> float:
 def build(rows: list[dict]) -> str:
     idx = [r for r in rows if r["event"] == "index"]
     qry = [r for r in rows if r["event"] == "query"]
+
+    # 指標檔會跨設定累積。脈絡預算改過之後，舊紀錄描述的是另一套系統 ——
+    # 混在一起算，分母會變成兩個時期的混合值，而報表看起來完全正常。
+    # 現在的預算不可能超過 retrieval_budget，比它大的就是改設定前留下的。
+    ceiling = settings.retrieval_budget
+    stale = [r for r in qry if r.get("context_budget", 0) > ceiling]
+    qry = [r for r in qry if r not in stale]
+
     out: list[str] = ["# 執行指標", "",
                       f"樣本：索引 {len(idx)} 次 · 查詢 {len(qry)} 次",
                       "", "重現：`python scripts/report.py --md docs/results/runtime.md`", ""]
+    if stale:
+        out += [f"> 另有 {len(stale)} 筆查詢紀錄產生於脈絡預算調整之前"
+                f"（額度上限非現行的 {ceiling}），未計入。", ""]
 
     if idx:
         secs = [r.get("index_seconds", 0) for r in idx]
@@ -51,15 +63,26 @@ def build(rows: list[dict]) -> str:
         llm = [r.get("llm_ms", 0) for r in qry]
         ctx = [r.get("context_tokens", 0) for r in qry]
         cost = sum(r.get("cost_usd", 0) for r in qry)
-        budget = qry[-1].get("context_budget", 7000)
+        # 額度是每一次請求各自算出來的（問題越長、能放的文件內容越少），
+        # 所以沒有單一分母可寫。取最常見的那個當代表，並在額度不只一種時
+        # 附上實際觀察到的範圍 —— 直接拿最後一筆當全體，會把某一次長問題
+        # 的縮減額度誤植成整份報表的分母。
+        budgets = [r["context_budget"] for r in qry if r.get("context_budget")]
+        budget = statistics.mode(budgets) if budgets else settings.retrieval_budget
+        span = ("" if len(set(budgets)) <= 1
+                else f"（本批次觀察到 {min(budgets)}–{max(budgets)}）")
+        used_pct = [r["context_tokens"] / r["context_budget"] * 100
+                    for r in qry if r.get("context_budget")]
 
         out += ["## 查詢延遲", "", "| 階段 | p50 | p95 |", "|---|---:|---:|",
                 f"| 檢索 | {pct(ret, .5):.0f} ms | {pct(ret, .95):.0f} ms |",
                 f"| 生成 | {pct(llm, .5):.0f} ms | {pct(llm, .95):.0f} ms |",
                 f"| 端到端 | {pct(tot, .5) / 1000:.2f} s | {pct(tot, .95) / 1000:.2f} s |", "",
                 "## 脈絡與成本", "", "| 指標 | 值 |", "|---|---|",
-                f"| 脈絡用量 p50 | {pct(ctx, .5):.0f} / {budget} tokens |",
-                f"| 脈絡用量 p95 | {pct(ctx, .95):.0f} / {budget} tokens |",
+                f"| 脈絡用量 p50 | {pct(ctx, .5):.0f} / {budget} tokens{span} |",
+                f"| 脈絡用量 p95 | {pct(ctx, .95):.0f} / {budget} tokens{span} |",
+                f"| 佔各自額度的比例 p50 / p95 | {pct(used_pct, .5):.0f}%"
+                f" / {pct(used_pct, .95):.0f}% |",
                 f"| 因預算不足而捨棄的片段 | {sum(len(r.get('dropped', [])) for r in qry)} |",
                 f"| 平均每次查詢 | {statistics.mean([r.get('prompt_tokens', 0) for r in qry]):.0f} in"
                 f" / {statistics.mean([r.get('completion_tokens', 0) for r in qry]):.0f} out |",

@@ -104,7 +104,7 @@ async def answer(
     if r.name == "comparison" and r.entities:
         chunks = _drop_unrelated_table_rows(chunks, r.entities)
     scores = {index.chunk(h.index).chunk_id: h.score for h in hits}
-    ctx = pack(chunks, all_chunks=index.chunks)
+    ctx = pack(chunks, all_chunks=index.chunks, question=question)
     if r.name == "comparison":
         ctx = _focus_table_blocks(ctx, r.entities)
 
@@ -412,7 +412,7 @@ async def answer_stream(
     if r.name == "comparison" and r.entities:
         chunks = _drop_unrelated_table_rows(chunks, r.entities)
     scores = {index.chunk(h.index).chunk_id: h.score for h in hits}
-    ctx = pack(chunks, all_chunks=index.chunks)
+    ctx = pack(chunks, all_chunks=index.chunks, question=question)
     if r.name == "comparison":
         ctx = _focus_table_blocks(ctx, r.entities)
     yield {"type": "stage", "stage": "packing",

@@ -25,7 +25,7 @@ class Settings(BaseSettings):
     # --- 策略開關（evaluation 對照組）--------------------------------------
     chunk_strategy: Literal["section", "fixed"] = "section"
     retrieval_mode: Literal["hybrid", "vector"] = "hybrid"
-    embedding_backend: Literal["onnx", "e5-small", "bge-zh", "zh", "onnx-large", "openai"] = "onnx"
+    embedding_backend: Literal["onnx", "e5-small", "bge-zh", "zh", "onnx-large"] = "onnx"
 
     # 四個後端實測比較後選定 MiniLM（見 docs/results/embedding.md）。
     # 這個結果與直覺相反：e5-small 是專為檢索訓練的較新模型，卻在本語料上
@@ -34,7 +34,6 @@ class Settings(BaseSettings):
     embedding_model_onnx: str = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
     embedding_model_zh: str = "jinaai/jina-embeddings-v2-base-zh"          # 中英混合，640MB
     embedding_model_onnx_large: str = "intfloat/multilingual-e5-large"     # 100 語言，2.24GB
-    embedding_model_openai: str = "text-embedding-3-small"
 
     # --- Context budget ---------------------------------------------------
     # 作業假設 LLM max context = 10K，以下為切分方式
@@ -74,13 +73,25 @@ class Settings(BaseSettings):
 
     @property
     def retrieval_budget(self) -> int:
-        """留給檢索內容的 token 上限。"""
-        return (
-            self.max_context
-            - self.system_reserved
-            - self.question_reserved
-            - self.answer_reserved
-            - self.safety_margin
+        """留給檢索內容的 token 上限（以保留額估算的問題長度計）。"""
+        return self.budget_for(self.question_reserved)
+
+    def budget_for(self, question_tokens: int) -> int:
+        """依實際的問題長度算出可用額度。
+
+        question_reserved 是預留值，不是保證：問題長度上限設在「字元」，
+        而 1,000 個中文字元約為 920 tokens —— 遠超過 200 的保留額。
+        照固定額度組裝的話，最壞情況是 1800＋6000＋920＋1500 = 10,220，
+        **超過作業假設的 10,000**。
+
+        因此問題比保留額長時，超出的部分直接從檢索額度扣掉：
+        總量因此恆等於 max_context 減去安全邊際，不會超標。
+        """
+        used = max(question_tokens, self.question_reserved)
+        return max(
+            0,
+            self.max_context - self.system_reserved - used
+            - self.answer_reserved - self.safety_margin,
         )
 
 
