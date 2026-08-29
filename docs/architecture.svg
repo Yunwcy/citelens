@@ -1,0 +1,208 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1560 1058" width="1560" height="1058" font-family="'IBM Plex Sans','Helvetica Neue',Helvetica,'PingFang TC','Noto Sans TC','Microsoft JhengHei',sans-serif">
+<rect width="1560" height="1058" fill="#ffffff"/>
+<rect x="20.0" y="20.0" width="212.0" height="132.0" rx="10" fill="#f4f8ff" stroke="#c3d8f5" stroke-width="1.2"/>
+<rect x="40.5" y="42" width="15" height="10" rx="1.5" stroke="#1d4ed8" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M45 55 h6 M48 52 v3" stroke="#1d4ed8" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="66.0" y="53.0" font-size="18" fill="#1d4ed8" font-weight="700">客戶端</text>
+<text x="66.0" y="73.0" font-size="12.5" fill="#5b7cb8">使用者介面</text>
+<rect x="252.0" y="20.0" width="300.0" height="132.0" rx="10" fill="#ffffff" stroke="#c3d8f5" stroke-width="1.2"/>
+<path d="M269.0 36 h8 l4 4 v12 h-12 z" stroke="#1d4ed8" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M272.0 44 h6 M272.0 48 h6" stroke="#1d4ed8" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="292.0" y="49.0" font-size="15.5" fill="#12161f" font-weight="600">文件面板</text>
+<text x="265.0" y="74.0" font-size="13" fill="#4b5565">上傳 PDF、貼 arXiv 連結、切換與刪除</text>
+<rect x="568.0" y="20.0" width="300.0" height="132.0" rx="10" fill="#ffffff" stroke="#c3d8f5" stroke-width="1.2"/>
+<path d="M583.0 39 h16 v9 h-9 l-4 4 v-4 h-3 z" stroke="#1d4ed8" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="608.0" y="49.0" font-size="15.5" fill="#12161f" font-weight="600">對話區</text>
+<text x="581.0" y="74.0" font-size="13" fill="#4b5565">逐字串流、引用標記、檢索細節</text>
+<rect x="884.0" y="20.0" width="300.0" height="132.0" rx="10" fill="#ffffff" stroke="#c3d8f5" stroke-width="1.2"/>
+<path d="M900.0 40 h14 M900.0 44 h14 M900.0 48 h10" stroke="#1d4ed8" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="924.0" y="49.0" font-size="15.5" fill="#12161f" font-weight="600">來源面板</text>
+<text x="897.0" y="74.0" font-size="13" fill="#4b5565">頁碼、章節、點開看原文</text>
+<rect x="20.0" y="204.0" width="212.0" height="126.0" rx="10" fill="#f6f7fd" stroke="#ccd3ec" stroke-width="1.2"/>
+<path d="M48 224.5 l7 3 v6 c0 4 -3 6.5 -7 8 c-4 -1.5 -7 -4 -7 -8 v-6 z" stroke="#3b4a9c" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="66.0" y="237.0" font-size="18" fill="#3b4a9c" font-weight="700">代理層</text>
+<text x="66.0" y="257.0" font-size="12.5" fill="#6a74a8">nginx 反向代理</text>
+<rect x="252.0" y="204.0" width="300.0" height="126.0" rx="10" fill="#ffffff" stroke="#ccd3ec" stroke-width="1.2"/>
+<circle cx="275.0" cy="228" r="7.5" stroke="#3b4a9c" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M267.5 228 h15 M275.0 220.5 a11 11 0 0 1 0 15 a11 11 0 0 1 0 -15" stroke="#3b4a9c" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="292.0" y="233.0" font-size="15.5" fill="#12161f" font-weight="600">靜態檔</text>
+<text x="265.0" y="258.0" font-size="13" fill="#4b5565">網頁本身</text>
+<rect x="568.0" y="204.0" width="300.0" height="126.0" rx="10" fill="#ffffff" stroke="#ccd3ec" stroke-width="1.2"/>
+<path d="M584.0 225 h12 l-3 -3 M598.0 231 h-12 l3 3" stroke="#3b4a9c" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="608.0" y="233.0" font-size="15.5" fill="#12161f" font-weight="600">API 轉送</text>
+<text x="581.0" y="258.0" font-size="13" fill="#4b5565">上限 30MB、逾時 300 秒</text>
+<rect x="884.0" y="204.0" width="300.0" height="126.0" rx="10" fill="#ffffff" stroke="#ccd3ec" stroke-width="1.2"/>
+<path d="M899.0 229 h4 l2.5 -6 l3.5 12 l2.5 -6 h3.5" stroke="#3b4a9c" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="924.0" y="233.0" font-size="15.5" fill="#12161f" font-weight="600">健康檢查</text>
+<text x="897.0" y="258.0" font-size="13" fill="#4b5565">明確代理，不會假回 200</text>
+<rect x="20.0" y="352.0" width="212.0" height="146.0" rx="10" fill="#faf8ff" stroke="#d8cef2" stroke-width="1.2"/>
+<path d="M49 372 l-6 9 h4 l-1 7 l6 -9 h-4 z" stroke="#5b3fa8" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="66.0" y="385.0" font-size="18" fill="#5b3fa8" font-weight="700">服務層</text>
+<text x="66.0" y="405.0" font-size="12.5" fill="#7d6cae">FastAPI + uvicorn</text>
+<text x="66.0" y="421.0" font-size="12.5" fill="#7d6cae">非同步服務</text>
+<rect x="252.0" y="352.0" width="222.5" height="146.0" rx="10" fill="#ffffff" stroke="#d8cef2" stroke-width="1.2"/>
+<path d="M267.5 372 h5.5 l2 2.5 h7.5 v9 h-15 z" stroke="#5b3fa8" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="292.0" y="381.0" font-size="15.5" fill="#12161f" font-weight="600">文件服務</text>
+<text x="265.0" y="406.0" font-size="13" fill="#4b5565">上傳、from-url、列表、</text>
+<text x="265.0" y="425.0" font-size="13" fill="#4b5565">詳情、刪除、進度</text>
+<rect x="488.5" y="352.0" width="222.5" height="146.0" rx="10" fill="#ffffff" stroke="#d8cef2" stroke-width="1.2"/>
+<path d="M503.5 371 h16 v9 h-9 l-4 4 v-4 h-3 z" stroke="#5b3fa8" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="528.5" y="381.0" font-size="15.5" fill="#12161f" font-weight="600">問答服務</text>
+<text x="501.5" y="406.0" font-size="13" fill="#4b5565">逐字串流回傳（SSE）</text>
+<rect x="725.0" y="352.0" width="222.5" height="146.0" rx="10" fill="#ffffff" stroke="#d8cef2" stroke-width="1.2"/>
+<path d="M742.0 382 v-5 M747.0 382 v-9 M752.0 382 v-13" stroke="#5b3fa8" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="765.0" y="381.0" font-size="15.5" fill="#12161f" font-weight="600">指標服務</text>
+<text x="738.0" y="406.0" font-size="13" fill="#4b5565">延遲、成本、檢索準確度</text>
+<rect x="961.5" y="352.0" width="222.5" height="146.0" rx="10" fill="#ffffff" stroke="#d8cef2" stroke-width="1.2"/>
+<path d="M978.5 371 h12 v7 a6 6 0 0 1 -12 0 z M982.5 368 v3 M987.5 368 v3 M984.5 384 v-1" stroke="#5b3fa8" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="1001.5" y="381.0" font-size="15.5" fill="#12161f" font-weight="600">MCP 服務</text>
+<text x="974.5" y="406.0" font-size="13" fill="#4b5565">四個工具對外開放</text>
+<rect x="20.0" y="546.0" width="212.0" height="206.0" rx="10" fill="#fdfaf3" stroke="#e6d2a8" stroke-width="1.2"/>
+<circle cx="48" cy="574" r="3.2" stroke="#8a6a2f" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M48 566.5 v2.5 M48 579 v2.5 M40.5 574 h2.5 M53 574 h2.5 M42.7 568.7 l1.8 1.8 M51.5 577.5 l1.8 1.8 M53.3 568.7 l-1.8 1.8 M44.5 577.5 l-1.8 1.8" stroke="#8a6a2f" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="66.0" y="579.0" font-size="18" fill="#8a6a2f" font-weight="700">核心處理層</text>
+<text x="66.0" y="599.0" font-size="12.5" fill="#9c8459">作業真正的內容</text>
+<text x="66.0" y="615.0" font-size="12.5" fill="#9c8459">全部自己寫</text>
+<rect x="252.0" y="546.0" width="203.0" height="206.0" rx="10" fill="#ffffff" stroke="#e6d2a8" stroke-width="1.2"/>
+<path d="M268.0 567 v-4 h4 M282.0 567 v-4 h-4 M268.0 573 v4 h4 M282.0 573 v4 h-4" stroke="#8a6a2f" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M272.0 570 h6" stroke="#8a6a2f" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="292.0" y="575.0" font-size="15.5" fill="#12161f" font-weight="600">解析</text>
+<circle cx="270.0" cy="600.0" r="2" fill="#a8842c"/>
+<text x="280.0" y="604.0" font-size="12.5" fill="#4b5565">文字擷取（PyMuPDF）</text>
+<circle cx="270.0" cy="623.5" r="2" fill="#a8842c"/>
+<text x="280.0" y="627.5" font-size="12.5" fill="#4b5565">座標資訊</text>
+<circle cx="270.0" cy="647.0" r="2" fill="#a8842c"/>
+<text x="280.0" y="651.0" font-size="12.5" fill="#4b5565">字級偵測</text>
+<circle cx="270.0" cy="670.5" r="2" fill="#a8842c"/>
+<text x="280.0" y="674.5" font-size="12.5" fill="#4b5565">版面線條偵測</text>
+<rect x="469.0" y="546.0" width="203.0" height="206.0" rx="10" fill="#ffffff" stroke="#e6d2a8" stroke-width="1.2"/>
+<circle cx="487.0" cy="574" r="2.5" stroke="#8a6a2f" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/><circle cx="497.0" cy="574" r="2.5" stroke="#8a6a2f" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M488.5 572 l8 -9 M495.5 572 l-8 -9" stroke="#8a6a2f" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="509.0" y="575.0" font-size="15.5" fill="#12161f" font-weight="600">切分</text>
+<circle cx="487.0" cy="600.0" r="2" fill="#a8842c"/>
+<text x="497.0" y="604.0" font-size="12.5" fill="#4b5565">四級章節偵測</text>
+<circle cx="487.0" cy="623.5" r="2" fill="#a8842c"/>
+<text x="497.0" y="627.5" font-size="12.5" fill="#4b5565">遞迴切分</text>
+<circle cx="487.0" cy="647.0" r="2" fill="#a8842c"/>
+<text x="497.0" y="651.0" font-size="12.5" fill="#4b5565">表格不可分割</text>
+<circle cx="487.0" cy="670.5" r="2" fill="#a8842c"/>
+<text x="497.0" y="674.5" font-size="12.5" fill="#4b5565">以 token 計長度</text>
+<rect x="686.0" y="546.0" width="203.0" height="206.0" rx="10" fill="#ffffff" stroke="#e6d2a8" stroke-width="1.2"/>
+<path d="M709.0 577 v-5 M709.0 572 l-5 -5 v-3 M709.0 572 l5 -5 v-3" stroke="#8a6a2f" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="726.0" y="575.0" font-size="15.5" fill="#12161f" font-weight="600">路由</text>
+<circle cx="704.0" cy="600.0" r="2" fill="#a8842c"/>
+<text x="714.0" y="604.0" font-size="12.5" fill="#4b5565">摘要（summary）</text>
+<circle cx="704.0" cy="623.5" r="2" fill="#a8842c"/>
+<text x="714.0" y="627.5" font-size="12.5" fill="#4b5565">比較（comparison）</text>
+<circle cx="704.0" cy="647.0" r="2" fill="#a8842c"/>
+<text x="714.0" y="651.0" font-size="12.5" fill="#4b5565">查表（table_lookup）</text>
+<circle cx="704.0" cy="670.5" r="2" fill="#a8842c"/>
+<text x="714.0" y="674.5" font-size="12.5" fill="#4b5565">問答（qa）</text>
+<rect x="903.0" y="546.0" width="203.0" height="206.0" rx="10" fill="#ffffff" stroke="#e6d2a8" stroke-width="1.2"/>
+<circle cx="925.0" cy="569" r="5.5" stroke="#8a6a2f" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M929.0 573 l4 4" stroke="#8a6a2f" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="943.0" y="575.0" font-size="15.5" fill="#12161f" font-weight="600">檢索</text>
+<circle cx="921.0" cy="600.0" r="2" fill="#a8842c"/>
+<text x="931.0" y="604.0" font-size="12.5" fill="#4b5565">向量搜尋（ONNX）</text>
+<circle cx="921.0" cy="623.5" r="2" fill="#a8842c"/>
+<text x="931.0" y="627.5" font-size="12.5" fill="#4b5565">BM25 關鍵字搜尋</text>
+<circle cx="921.0" cy="647.0" r="2" fill="#a8842c"/>
+<text x="931.0" y="651.0" font-size="12.5" fill="#4b5565">RRF 名次合併</text>
+<circle cx="921.0" cy="670.5" r="2" fill="#a8842c"/>
+<text x="931.0" y="674.5" font-size="12.5" fill="#4b5565">預算組裝（token-aware）</text>
+<rect x="1120.0" y="546.0" width="203.0" height="206.0" rx="10" fill="#ffffff" stroke="#e6d2a8" stroke-width="1.2"/>
+<rect x="1136.0" y="564" width="14" height="12" rx="1.5" stroke="#8a6a2f" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M1136.0 568.5 h14 M1142.0 568.5 v7.5" stroke="#8a6a2f" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="1160.0" y="575.0" font-size="15.5" fill="#12161f" font-weight="600">表格</text>
+<circle cx="1138.0" cy="600.0" r="2" fill="#a8842c"/>
+<text x="1148.0" y="604.0" font-size="12.5" fill="#4b5565">幾何還原（橫線錨點）</text>
+<circle cx="1138.0" cy="623.5" r="2" fill="#a8842c"/>
+<text x="1148.0" y="627.5" font-size="12.5" fill="#4b5565">列欄切分</text>
+<circle cx="1138.0" cy="647.0" r="2" fill="#a8842c"/>
+<text x="1148.0" y="651.0" font-size="12.5" fill="#4b5565">數值多重集守恆</text>
+<circle cx="1138.0" cy="670.5" r="2" fill="#a8842c"/>
+<text x="1148.0" y="674.5" font-size="12.5" fill="#4b5565">鍵（欄名）唯一檢查</text>
+<rect x="1337.0" y="546.0" width="203.0" height="206.0" rx="10" fill="#ffffff" stroke="#e6d2a8" stroke-width="1.2"/>
+<path d="M1354.0 563 h9 l3 3 v11 h-12 z" stroke="#8a6a2f" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M1357.0 569 h6 M1357.0 573 h4" stroke="#8a6a2f" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="1377.0" y="575.0" font-size="15.5" fill="#12161f" font-weight="600">摘要</text>
+<circle cx="1355.0" cy="600.0" r="2" fill="#a8842c"/>
+<text x="1365.0" y="604.0" font-size="12.5" fill="#4b5565">分段摘要（Map）</text>
+<circle cx="1355.0" cy="623.5" r="2" fill="#a8842c"/>
+<text x="1365.0" y="627.5" font-size="12.5" fill="#4b5565">整合摘要（Reduce）</text>
+<circle cx="1355.0" cy="647.0" r="2" fill="#a8842c"/>
+<text x="1365.0" y="651.0" font-size="12.5" fill="#4b5565">保留關鍵數值</text>
+<circle cx="1355.0" cy="670.5" r="2" fill="#a8842c"/>
+<text x="1365.0" y="674.5" font-size="12.5" fill="#4b5565">避免過度概括</text>
+<rect x="20.0" y="782.0" width="212.0" height="168.0" rx="10" fill="#f5faf6" stroke="#c8ddca" stroke-width="1.2"/>
+<ellipse cx="48" cy="805.5" rx="7.5" ry="2.8" stroke="#2f6b46" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M40.5 805.5 v9 a7.5 2.8 0 0 0 15 0 v-9" stroke="#2f6b46" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="66.0" y="815.0" font-size="18" fill="#2f6b46" font-weight="700">資料與外部層</text>
+<text x="66.0" y="835.0" font-size="12.5" fill="#5f8a70">本機優先</text>
+<rect x="252.0" y="782.0" width="418.7" height="168.0" rx="10" fill="#ffffff" stroke="#c8ddca" stroke-width="1.2"/>
+<ellipse cx="277.0" cy="803.5" rx="7.5" ry="2.8" stroke="#2f6b46" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M269.5 803.5 v9 a7.5 2.8 0 0 0 15 0 v-9" stroke="#2f6b46" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="295.0" y="813.0" font-size="15.5" fill="#12161f" font-weight="600">本機檔案</text>
+<text x="267.0" y="842.0" font-size="13" fill="#4b5565">原始 PDF、片段、向量、</text>
+<text x="267.0" y="863.0" font-size="13" fill="#4b5565">摘要快取、指標紀錄</text>
+<text x="267.0" y="884.0" font-size="13" fill="#4b5565">（沒有資料庫）</text>
+<rect x="686.7" y="782.0" width="418.7" height="168.0" rx="10" fill="#ffffff" stroke="#c8ddca" stroke-width="1.2"/>
+<path d="M711.6666666666667 800.5 l7 4 v7 l-7 4 l-7 -4 v-7 z" stroke="#2f6b46" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M704.6666666666667 804.5 l7 4 l7 -4 M711.6666666666667 808.5 v7" stroke="#2f6b46" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="729.7" y="813.0" font-size="15.5" fill="#12161f" font-weight="600">向量化（本機 ONNX）</text>
+<text x="701.7" y="842.0" font-size="13" fill="#4b5565">multilingual-MiniLM-L12-v2（220MB）</text>
+<text x="701.7" y="863.0" font-size="13" fill="#4b5565">384 維・在本機執行</text>
+<text x="701.7" y="884.0" font-size="13" fill="#4b5565">不屬於外部呼叫</text>
+<rect x="1121.3" y="782.0" width="418.7" height="168.0" rx="10" fill="#12161f" stroke="#12161f" stroke-width="1.2"/>
+<path d="M1147.3333333333335 801 l2 5.5 l5.5 2 l-5.5 2 l-2 5.5 l-2 -5.5 l-5.5 -2 l5.5 -2 z" fill="#a8842c" stroke="none"/>
+<text x="1165.3" y="814.0" font-size="16.5" fill="#ffffff" font-weight="700">語言模型</text>
+<text x="1239.3" y="814.0" font-size="12.5" fill="#a8842c">（全系統唯一的對外呼叫）</text>
+<text x="1137.3" y="846.0" font-size="22" fill="#ffffff" font-weight="700">gpt-4o-mini</text>
+<text x="1137.3" y="896.0" font-size="13" fill="#cbd3e0">只傳純文字、只收純文字</text>
+<text x="1137.3" y="916.0" font-size="13" fill="#cbd3e0">解析、切分、向量化全部在本機完成</text>
+<text x="1137.3" y="936.0" font-size="13" fill="#a8842c" font-weight="600">索引階段外部 API 呼叫：0 次</text>
+<rect x="1204.0" y="204.0" width="336.0" height="126.0" rx="10" fill="#ffffff" stroke="#ccd3ec" stroke-width="1.2"/>
+<text x="1222.0" y="230.0" font-size="14.5" fill="#3b4a9c" font-weight="600">nginx 設定重點</text>
+<path d="M1223 250 l3 3.5 l6 -7" stroke="#3b4a9c" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+<text x="1246.0" y="254.0" font-size="12.5" fill="#4b5565">client_max_body_size 30m</text>
+<path d="M1223 274 l3 3.5 l6 -7" stroke="#3b4a9c" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+<text x="1246.0" y="278.0" font-size="12.5" fill="#4b5565">proxy_read_timeout 300s</text>
+<path d="M1223 298 l3 3.5 l6 -7" stroke="#3b4a9c" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+<text x="1246.0" y="302.0" font-size="12.5" fill="#4b5565">/health 明確代理，不落入 SPA 回退</text>
+<rect x="1204.0" y="352.0" width="336.0" height="146.0" rx="10" fill="#ffffff" stroke="#d8cef2" stroke-width="1.2"/>
+<text x="1222.0" y="378.0" font-size="14.5" fill="#5b3fa8" font-weight="600">MCP 工具（對外開放）</text>
+<rect x="1222" y="391" width="15" height="15" rx="3.5" fill="#faf8ff" stroke="#d8cef2"/>
+<text x="1229.5" y="402.0" font-size="10.5" fill="#5b3fa8" font-weight="600" text-anchor="middle">1</text>
+<text x="1246.0" y="402.0" font-size="12.5" fill="#4b5565" font-family="ui-monospace,SFMono-Regular,Menlo,monospace">search_document</text>
+<rect x="1222" y="415" width="15" height="15" rx="3.5" fill="#faf8ff" stroke="#d8cef2"/>
+<text x="1229.5" y="426.0" font-size="10.5" fill="#5b3fa8" font-weight="600" text-anchor="middle">2</text>
+<text x="1246.0" y="426.0" font-size="12.5" fill="#4b5565" font-family="ui-monospace,SFMono-Regular,Menlo,monospace">get_table_cell</text>
+<rect x="1222" y="439" width="15" height="15" rx="3.5" fill="#faf8ff" stroke="#d8cef2"/>
+<text x="1229.5" y="450.0" font-size="10.5" fill="#5b3fa8" font-weight="600" text-anchor="middle">3</text>
+<text x="1246.0" y="450.0" font-size="12.5" fill="#4b5565" font-family="ui-monospace,SFMono-Regular,Menlo,monospace">summarize_document</text>
+<rect x="1222" y="463" width="15" height="15" rx="3.5" fill="#faf8ff" stroke="#d8cef2"/>
+<text x="1229.5" y="474.0" font-size="10.5" fill="#5b3fa8" font-weight="600" text-anchor="middle">4</text>
+<text x="1246.0" y="474.0" font-size="12.5" fill="#4b5565" font-family="ui-monospace,SFMono-Regular,Menlo,monospace">list_documents</text>
+<path d="M292 178.0 H1144" stroke="#c3d8f5" stroke-width="1.3" stroke-dasharray="5 4" fill="none"/>
+<rect x="580.0" y="167.0" width="276" height="22" rx="11" fill="#ffffff"/>
+<text x="718.0" y="183.0" font-size="13" fill="#1d4ed8" font-weight="600" text-anchor="middle">HTTP　・　伺服器推送事件（SSE）</text>
+<path d="M402.0 178.0 L402.0 159" stroke="#5b7cb8" stroke-width="1.4" fill="none" stroke-dasharray="4 3"/>
+<path d="M397.5 159.5 L402.0 152 L406.5 159.5 Z" fill="#5b7cb8"/>
+<path d="M718.0 178.0 L718.0 159" stroke="#5b7cb8" stroke-width="1.4" fill="none" stroke-dasharray="4 3"/>
+<path d="M713.5 159.5 L718.0 152 L722.5 159.5 Z" fill="#5b7cb8"/>
+<path d="M1034.0 178.0 L1034.0 159" stroke="#5b7cb8" stroke-width="1.4" fill="none" stroke-dasharray="4 3"/>
+<path d="M1029.5 159.5 L1034.0 152 L1038.5 159.5 Z" fill="#5b7cb8"/>
+<path d="M718.0 330 L718.0 345" stroke="#6a74a8" stroke-width="1.4" fill="none"/>
+<path d="M713.5 344.5 L718.0 352 L722.5 344.5 Z" fill="#6a74a8"/>
+<path d="M292 522.0 H1500" stroke="#e6d2a8" stroke-width="1.3" stroke-dasharray="5 4" fill="none"/>
+<rect x="566.0" y="511.0" width="304" height="22" rx="11" fill="#ffffff"/>
+<text x="718.0" y="527.0" font-size="13" fill="#8a6a2f" font-weight="600" text-anchor="middle">上傳時走這裡　・　提問時也走這裡</text>
+<path d="M718.0 498 L718.0 503.0" stroke="#7d6cae" stroke-width="1.4" fill="none"/>
+<path d="M713.5 502.5 L718.0 510.0 L722.5 502.5 Z" fill="#7d6cae"/>
+<path d="M718.0 534.0 L718.0 539" stroke="#9c8459" stroke-width="1.4" fill="none"/>
+<path d="M713.5 538.5 L718.0 546 L722.5 538.5 Z" fill="#9c8459"/>
+<path d="M896.0 752 L896.0 775" stroke="#5f8a70" stroke-width="1.4" fill="none"/>
+<path d="M891.5 774.5 L896.0 782 L900.5 774.5 Z" fill="#5f8a70"/>
+<rect x="20.0" y="980.0" width="1520.0" height="56.0" rx="10" fill="#ffffff" stroke="#e3e8ef" stroke-width="1.2" stroke-dasharray="4 4"/>
+<rect x="44.0" y="1001" width="14" height="14" rx="3.5" fill="#f4f8ff" stroke="#c3d8f5" stroke-width="1.4"/>
+<text x="66.0" y="1013.0" font-size="13" fill="#4b5565">客戶端</text>
+<rect x="139.0" y="1001" width="14" height="14" rx="3.5" fill="#f6f7fd" stroke="#ccd3ec" stroke-width="1.4"/>
+<text x="161.0" y="1013.0" font-size="13" fill="#4b5565">代理層</text>
+<rect x="234.0" y="1001" width="14" height="14" rx="3.5" fill="#faf8ff" stroke="#d8cef2" stroke-width="1.4"/>
+<text x="256.0" y="1013.0" font-size="13" fill="#4b5565">服務層</text>
+<rect x="329.0" y="1001" width="14" height="14" rx="3.5" fill="#fdfaf3" stroke="#e6d2a8" stroke-width="1.4"/>
+<text x="351.0" y="1013.0" font-size="13" fill="#4b5565">核心處理層</text>
+<rect x="450.0" y="1001" width="14" height="14" rx="3.5" fill="#f5faf6" stroke="#c8ddca" stroke-width="1.4"/>
+<text x="472.0" y="1013.0" font-size="13" fill="#4b5565">資料與外部層</text>
+<rect x="584.0" y="1001" width="14" height="14" rx="3.5" fill="#12161f"/>
+<text x="606.0" y="1013.0" font-size="13" fill="#12161f" font-weight="600">外部服務（全系統僅此一項）</text>
+<text x="1516.0" y="1013.0" font-size="12.5" fill="#8b95a5" text-anchor="end">每一項內容均與程式碼核對</text>
+</svg>
