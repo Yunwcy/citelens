@@ -32,7 +32,7 @@ TEST_COUNT_PATTERNS = [
     re.compile(r"(\d+)(\s*項自動化測試)"),
     re.compile(r"(\d+)(\s*項全過)"),
 ]
-SYNC_TARGETS = [README, ROOT / "docs" / "architecture.md", ROOT / "_working" / "系統說明文件.md"]
+SYNC_TARGETS = [README, ROOT / "docs" / "architecture.md"]
 
 
 def collected_tests() -> int:
