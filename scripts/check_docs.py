@@ -79,15 +79,16 @@ def check_measurements() -> list[str]:
         elif in_readme != in_report:
             bad.append(f"{label}：README 寫 {in_readme}，報表是 {in_report}")
 
+    # README 原本逐篇列出章節數，現已改為一句話帶過（逐篇數據在 retrieval.md）。
+    # 沒有寫出來的數字就不會漂移，所以那項檢查跟著移除，改為核對 README
+    # 仍然主張的表格保真度數字。
     retrieval = (RESULTS / "retrieval.md").read_text(encoding="utf-8")
-    for doc in ("1706.03762", "1810.04805", "2005.11401", "2410.05779"):
-        compare(
-            f"章節數 {doc}",
-            _cell(rd, rf"{re.escape(doc)} \| \d+ \| \*?\*?\d+\*?\*? \| [^|]+\| (\d+) \|"),
-            # 章節來源欄位是 toc/regex/font —— 用 \w+ 會連表格保真度那張表的
-            # 數字欄一起吃掉，比對到錯的表格
-            _cell(retrieval, rf"{re.escape(doc)}\.pdf \| \d+ \| \d+ \| [a-z]+ \| (\d+) \|"),
-        )
+    for label, rd_pat, rp_pat in (
+        ("偵測到的表格數", r"偵測到 (\d+) 張表", r"偵測到 (\d+) 張表"),
+        ("數值型表格通過率", r"數值型表格驗證通過率 (\d+/\d+)",
+         r"數值型表格的驗證通過率 (\d+/\d+)"),
+    ):
+        compare(label, _cell(rd, rd_pat), _cell(retrieval, rp_pat))
 
     load = (RESULTS / "load.md").read_text(encoding="utf-8")
     for label in ("1 併發", "20 併發"):

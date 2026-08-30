@@ -173,7 +173,7 @@
 <text x="1229.5" y="474.0" font-size="10.5" fill="#5b3fa8" font-weight="600" text-anchor="middle">4</text>
 <text x="1246.0" y="474.0" font-size="12.5" fill="#4b5565" font-family="ui-monospace,SFMono-Regular,Menlo,monospace">list_documents</text>
 <path d="M292 178.0 H1144" stroke="#c3d8f5" stroke-width="2.2" stroke-dasharray="5 4" fill="none"/>
-<rect x="580.0" y="167.0" width="276" height="22" rx="11" fill="#ffffff"/>
+<rect x="601.0" y="167.0" width="234.0" height="22" rx="11" fill="#ffffff"/>
 <text x="718.0" y="183.0" font-size="13" fill="#1d4ed8" font-weight="600" text-anchor="middle">HTTP　・　伺服器推送事件（SSE）</text>
 <path d="M402.0 178.0 L402.0 159" stroke="#5b7cb8" stroke-width="2.2" fill="none" stroke-dasharray="4 3"/>
 <path d="M397.0 160 L402.0 152 L407.0 160 Z" fill="#5b7cb8"/>
@@ -184,7 +184,7 @@
 <path d="M718.0 330 L718.0 345" stroke="#6a74a8" stroke-width="2.2" fill="none"/>
 <path d="M713.0 344 L718.0 352 L723.0 344 Z" fill="#6a74a8"/>
 <path d="M292 522.0 H1500" stroke="#e6d2a8" stroke-width="2.2" stroke-dasharray="5 4" fill="none"/>
-<rect x="566.0" y="511.0" width="304" height="22" rx="11" fill="#ffffff"/>
+<rect x="600.0" y="511.0" width="236.0" height="22" rx="11" fill="#ffffff"/>
 <text x="718.0" y="527.0" font-size="13" fill="#8a6a2f" font-weight="600" text-anchor="middle">上傳時走這裡　・　提問時也走這裡</text>
 <path d="M718.0 498 L718.0 503.0" stroke="#7d6cae" stroke-width="2.2" fill="none"/>
 <path d="M713.0 502.0 L718.0 510.0 L723.0 502.0 Z" fill="#7d6cae"/>
