@@ -11,7 +11,9 @@ pytest:
     - bash scripts/fetch_test_docs.sh
   script:
     - cd backend && python -m pytest tests -q
-    - cd .. && python scripts/eval.py --md docs/results/retrieval.md
+    # 這一步原本漏了，而檔頭寫著與 GitHub Actions 等價 —— 補上才成立
+    - cd .. && python scripts/check_docs.py
+    - python scripts/eval.py --md docs/results/retrieval.md
   artifacts:
     paths: [docs/results/]
 

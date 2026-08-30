@@ -4,6 +4,9 @@
 量測報表由腳本產生。README 是最容易違反這條的地方 —— 它是給人看的，
 沒有任何機制會在系統改變時提醒它。
 
+同樣的道理也套用在 Grafana 儀表板：它由 `ops/build_dashboard.py` 產生，
+但產出物進了版控之後，就可能被手改、或因為腳本改了而沒重跑。
+
 實際發生過三次漂移：
 - 章節偵測補上 front-matter 之後每篇 +1，README 仍是舊值
 - 併發的端到端 p50 寫 0.8 秒，重測是 3.5 秒
@@ -111,6 +114,21 @@ def check_measurements() -> list[str]:
     return bad
 
 
+def check_dashboard() -> list[str]:
+    """儀表板 JSON 必須是 build_dashboard.py 的最新產物。
+
+    產生式的檔案一旦進了版控就有兩個真相來源。這裡把「以哪個為準」
+    變成會失敗的檢查，而不是靠記得重跑。
+    """
+    out = subprocess.run(
+        [sys.executable, "ops/build_dashboard.py", "--check"],
+        cwd=ROOT, capture_output=True, text=True,
+    )
+    if out.returncode == 0:
+        return []
+    return [(out.stdout + out.stderr).strip().splitlines()[0]]
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--fix", action="store_true", help="自動修正測試數量")
@@ -118,7 +136,7 @@ def main() -> int:
 
     n = collected_tests()
     stale = sync_test_count(n, args.fix)
-    bad = check_measurements()
+    bad = check_measurements() + check_dashboard()
 
     if stale and args.fix:
         print(f"已將測試數量同步為 {n} 項：")

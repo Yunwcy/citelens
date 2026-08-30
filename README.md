@@ -1,5 +1,8 @@
 # CiteGrain
 
+[![ci](https://github.com/Yunwcy/citegrain/actions/workflows/ci.yml/badge.svg)](https://github.com/Yunwcy/citegrain/actions/workflows/ci.yml)
+[![license](https://img.shields.io/badge/license-MIT-1A1813)](LICENSE)
+
 **受限脈絡下的長文件可追溯問答系統**
 
 CiteGrain 是一套面向學術 PDF 的長文件問答系統。使用者可上傳 PDF 或貼入 arXiv 連結，
@@ -247,6 +250,9 @@ python scripts/check_docs.py                                 # 文件數字與�
 模型離線時仍能建立索引、跨文件泛用性，以及文件數字與產出的一致性。
 
 ### 重現本文的量測數字
+
+版控中的產生式檔案（量測報表、Grafana 儀表板 JSON）都必須是產生腳本的
+最新產物 —— `check_docs.py` 會逐項比對，對不上即失敗，CI 於每次推送執行。
 
 `docs/results/` 底下每一份報表都由指令產生，沒有一個數字是手打的。
 本節所有數字皆可由以下步驟重跑：

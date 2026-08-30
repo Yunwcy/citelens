@@ -2,8 +2,17 @@
 
 以程式生成而非手刻 JSON：九個面板的樣式與間距才會一致，
 調整版面時也不必逐一修改。
+
+但「由腳本產生」只有在產出物確實是最新的時候才成立 —— 有人手改了
+JSON、或改了腳本卻忘了重跑，版控裡那份就變成來歷不明的檔案。
+所以 --check 會比對而不寫入，供 check_docs.py 與 CI 呼叫。
+
+用法：
+    python ops/build_dashboard.py            # 產生
+    python ops/build_dashboard.py --check    # 比對，不一致則以非零結束
 """
 import json
+import sys
 from pathlib import Path
 
 DS = {"type": "prometheus", "uid": "prometheus"}
@@ -172,5 +181,15 @@ dashboard = {
 }
 
 out = Path(__file__).parent / "grafana/provisioning/dashboards/citegrain.json"
-out.write_text(json.dumps(dashboard, ensure_ascii=False, indent=2), encoding="utf-8")
-print(f"已產生 {out.name}：{len(panels)} 個面板，三列各 7 單位高")
+rendered = json.dumps(dashboard, ensure_ascii=False, indent=2)
+
+if "--check" in sys.argv:
+    current = out.read_text(encoding="utf-8") if out.exists() else ""
+    if current != rendered:
+        print(f"{out.name} 與 build_dashboard.py 不一致 —— "
+              f"請重跑 python ops/build_dashboard.py")
+        raise SystemExit(1)
+    print(f"{out.name} 與產生腳本一致（{len(panels)} 個面板）")
+else:
+    out.write_text(rendered, encoding="utf-8")
+    print(f"已產生 {out.name}：{len(panels)} 個面板，三列各 7 單位高")
