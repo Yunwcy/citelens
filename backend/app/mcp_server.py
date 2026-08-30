@@ -129,7 +129,7 @@ async def serve() -> None:
             send({"jsonrpc": "2.0", "id": rid, "result": {
                 "protocolVersion": "2024-11-05",
                 "capabilities": {"tools": {}},
-                "serverInfo": {"name": "citelens", "version": "0.1.0"}}})
+                "serverInfo": {"name": "citegrain", "version": "0.1.0"}}})
         elif method == "tools/list":
             send({"jsonrpc": "2.0", "id": rid, "result": {"tools": TOOLS}})
         elif method == "tools/call":

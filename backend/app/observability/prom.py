@@ -11,69 +11,69 @@ from prometheus_client import CollectorRegistry, Counter, Gauge, Histogram, gene
 REGISTRY = CollectorRegistry()
 
 QUERIES = Counter(
-    "citelens_query_total", "查詢次數", ["route"], registry=REGISTRY,
+    "citegrain_query_total", "查詢次數", ["route"], registry=REGISTRY,
 )
 DOCUMENTS = Counter(
-    "citelens_index_total", "建立索引次數", registry=REGISTRY,
+    "citegrain_index_total", "建立索引次數", registry=REGISTRY,
 )
 INDEX_API_CALLS = Counter(
-    "citelens_index_external_api_calls_total",
+    "citegrain_index_external_api_calls_total",
     "索引階段的外部 API 呼叫次數（本地向量化時恆為 0）", registry=REGISTRY,
 )
 TABLES = Counter(
-    "citelens_table_total", "偵測到的表格數", ["validated"], registry=REGISTRY,
+    "citegrain_table_total", "偵測到的表格數", ["validated"], registry=REGISTRY,
 )
 DROPPED = Counter(
-    "citelens_context_dropped_chunks_total", "因預算不足而捨棄的片段數", registry=REGISTRY,
+    "citegrain_context_dropped_chunks_total", "因預算不足而捨棄的片段數", registry=REGISTRY,
 )
 COST = Counter(
-    "citelens_cost_usd_total", "累計模型成本（USD）", registry=REGISTRY,
+    "citegrain_cost_usd_total", "累計模型成本（USD）", registry=REGISTRY,
 )
 CITED = Counter(
-    "citelens_answer_cited_total", "答案有標註引用編號的次數", ["cited"], registry=REGISTRY,
+    "citegrain_answer_cited_total", "答案有標註引用編號的次數", ["cited"], registry=REGISTRY,
 )
 OUTCOME = Counter(
-    "citelens_answer_outcome_total",
+    "citegrain_answer_outcome_total",
     "回答結果：cited 有標註引用、uncited 有作答但未標註、declined 文件未涵蓋",
     ["outcome"], registry=REGISTRY,
 )
 
 # --- 離線評估結果（由 scripts/eval.py 發布）---------------------------------
 EVAL_TOP3 = Gauge(
-    "citelens_eval_top3_rate", "目標章節進入前三名的比例", ["config"], registry=REGISTRY,
+    "citegrain_eval_top3_rate", "目標章節進入前三名的比例", ["config"], registry=REGISTRY,
 )
 EVAL_TOP3_COUNT = Gauge(
-    "citelens_eval_top3_hits", "目標章節進入前三名的題數", ["config"], registry=REGISTRY,
+    "citegrain_eval_top3_hits", "目標章節進入前三名的題數", ["config"], registry=REGISTRY,
 )
 EVAL_TOTAL = Gauge(
-    "citelens_eval_total_queries", "評估用的查詢總數", registry=REGISTRY,
+    "citegrain_eval_total_queries", "評估用的查詢總數", registry=REGISTRY,
 )
 EVAL_RANK = Gauge(
-    "citelens_eval_rank", "目標章節的名次（11 表示未進前十）", ["config", "query"],
+    "citegrain_eval_rank", "目標章節的名次（11 表示未進前十）", ["config", "query"],
     registry=REGISTRY,
 )
 EVAL_TABLES = Gauge(
-    "citelens_eval_tables", "表格解析結果", ["state"], registry=REGISTRY,
+    "citegrain_eval_tables", "表格解析結果", ["state"], registry=REGISTRY,
 )
 
 # 桶界依實測分布設定：檢索在數十毫秒，生成在數秒
 RETRIEVAL_SECONDS = Histogram(
-    "citelens_retrieval_seconds", "檢索耗時",
+    "citegrain_retrieval_seconds", "檢索耗時",
     buckets=(0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5),
     registry=REGISTRY,
 )
 LLM_SECONDS = Histogram(
-    "citelens_llm_seconds", "模型生成耗時",
+    "citegrain_llm_seconds", "模型生成耗時",
     buckets=(0.5, 1, 2, 3, 5, 8, 12, 20, 30),
     registry=REGISTRY,
 )
 REQUEST_SECONDS = Histogram(
-    "citelens_request_seconds", "查詢端到端耗時",
+    "citegrain_request_seconds", "查詢端到端耗時",
     buckets=(0.5, 1, 2, 3, 5, 8, 12, 20, 30),
     registry=REGISTRY,
 )
 PROMPT_TOKENS = Histogram(
-    "citelens_prompt_tokens", "送進模型的 token 數（系統提示＋脈絡＋問題）",
+    "citegrain_prompt_tokens", "送進模型的 token 數（系統提示＋脈絡＋問題）",
     buckets=(500, 1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000, 10000),
     registry=REGISTRY,
 )
@@ -81,12 +81,12 @@ PROMPT_TOKENS = Histogram(
 # 本來就會超過 7,000 的檢索預算 —— 拿它畫「脈絡用量」的面板，
 # 會讓圖表看起來剛好壓在上限線上，而說明文字寫著「從未觸及上限」。
 CONTEXT_TOKENS = Histogram(
-    "citelens_context_tokens", "檢索內容佔用的 token 數（上限為檢索預算）",
+    "citegrain_context_tokens", "檢索內容佔用的 token 數（上限為檢索預算）",
     buckets=(500, 1000, 1500, 2000, 3000, 4000, 5000, 6000, 6500, 7000),
     registry=REGISTRY,
 )
 INDEX_SECONDS = Histogram(
-    "citelens_index_seconds", "建立索引耗時",
+    "citegrain_index_seconds", "建立索引耗時",
     buckets=(1, 2, 5, 10, 20, 40, 80, 160),
     registry=REGISTRY,
 )

@@ -1,6 +1,6 @@
 # 系統架構
 
-本文件說明 CiteLens 的設計與實作。所有數字皆為實測值，重現指令見 README。
+本文件說明 CiteGrain 的設計與實作。所有數字皆為實測值，重現指令見 README。
 
 ---
 
@@ -10,7 +10,7 @@
 
 | 限制 | 對應設計 | 可驗證的證據 |
 |---|---|---|
-| 不得使用商用 API 解析文件 | 版面分析、章節偵測、表格抽取、向量化全部在本地執行 | `test_只有一個檔案能連到外部模型服務`；`/api/metrics` 的 `citelens_index_external_api_calls_total` 恆為 0 |
+| 不得使用商用 API 解析文件 | 版面分析、章節偵測、表格抽取、向量化全部在本地執行 | `test_只有一個檔案能連到外部模型服務`；`/api/metrics` 的 `citegrain_index_external_api_calls_total` 恆為 0 |
 | 語言模型只做 text-to-text | 全專案僅 `app/llm/client.py` 呼叫模型，介面只接受與回傳字串 | `test_模型介面只收字串只回字串`、`test_送進模型的訊息內容都是純文字` |
 | 假設脈絡上限 10K tokens | 檢索額度依每次請求的問題長度計算，一般情況為 6,000 tokens | `test_總量在最壞情況下也不超過作業上限`、`test_系統提示放得進保留額度` |
 

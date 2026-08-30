@@ -2,7 +2,7 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "citelens-api",
+      "name": "citegrain-api",
       "runtimeExecutable": "./.venv/bin/uvicorn",
       "runtimeArgs": ["app.main:app", "--host", "127.0.0.1", "--port", "8000", "--app-dir", "backend"],
       "port": 8000

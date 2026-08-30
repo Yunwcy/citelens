@@ -1,8 +1,8 @@
-# CiteLens
+# CiteGrain
 
 **受限脈絡下的長文件可追溯問答系統**
 
-CiteLens 是一套面向學術 PDF 的長文件問答系統。使用者可上傳 PDF 或貼入 arXiv 連結，
+CiteGrain 是一套面向學術 PDF 的長文件問答系統。使用者可上傳 PDF 或貼入 arXiv 連結，
 以自然語言提問，系統會根據文件內容回答並附上頁碼與章節來源。
 
 在 **10K tokens 的脈絡上限**下，系統以結構感知切分、混合檢索、token-aware context packing
@@ -25,7 +25,7 @@ CiteLens 是一套面向學術 PDF 的長文件問答系統。使用者可上傳
 
 ## Demo
 
-![CiteLens：以 LightRAG 論文回答消融實驗問題，右側為引用來源](docs/images/demo.png)
+![CiteGrain：以 LightRAG 論文回答消融實驗問題，右側為引用來源](docs/images/demo.png)
 
 左為文件清單、中為回答、右為引用來源。圖中的問題是作業指定的第三題
 （LightRAG 消融版本的效能），答案完全來自論文表格 —— 由系統還原並驗證後索引，
@@ -38,8 +38,8 @@ CiteLens 是一套面向學術 PDF 的長文件問答系統。使用者可上傳
 需求：Docker 與 Docker Compose。
 
 ```bash
-git clone https://github.com/Yunwcy/citelens.git
-cd citelens
+git clone https://github.com/Yunwcy/citegrain.git
+cd citegrain
 cp .env.example .env          # 填入 OPENAI_API_KEY
 docker compose up -d --build  # 首次約 3–5 分鐘，含下載本地向量化模型
 ```
@@ -78,7 +78,7 @@ cd frontend && npm install && npm run dev
 
 ## 系統架構
 
-![CiteLens 系統架構](docs/architecture.svg)
+![CiteGrain 系統架構](docs/architecture.svg)
 
 ```
 上傳 ─▶ 版面分析 ─▶ 章節偵測 ─▶ 表格抽取＋驗證 ─▶ 切塊 ─▶ 向量與 BM25 索引

@@ -1,8 +1,8 @@
 {
-  "uid": "citelens",
-  "title": "CiteLens",
+  "uid": "citegrain",
+  "title": "CiteGrain",
   "tags": [
-    "citelens"
+    "citegrain"
   ],
   "timezone": "browser",
   "schemaVersion": 39,
@@ -31,7 +31,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "citelens_eval_top3_rate",
+          "expr": "citegrain_eval_top3_rate",
           "legendFormat": "{{config}}",
           "datasource": {
             "type": "prometheus",
@@ -106,7 +106,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "citelens_eval_tables",
+          "expr": "citegrain_eval_tables",
           "legendFormat": "{{state}}",
           "datasource": {
             "type": "prometheus",
@@ -164,7 +164,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum(citelens_answer_outcome_total{outcome=\"cited\"}) / sum(citelens_answer_outcome_total{outcome=~\"cited|uncited\"})",
+          "expr": "sum(citegrain_answer_outcome_total{outcome=\"cited\"}) / sum(citegrain_answer_outcome_total{outcome=~\"cited|uncited\"})",
           "legendFormat": "引用率",
           "datasource": {
             "type": "prometheus",
@@ -234,7 +234,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum by (route) (increase(citelens_query_total[5m]))",
+          "expr": "sum by (route) (increase(citegrain_query_total[5m]))",
           "legendFormat": "{{route}}",
           "datasource": {
             "type": "prometheus",
@@ -291,7 +291,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "histogram_quantile(0.5, sum(rate(citelens_request_seconds_bucket[10m])) by (le))",
+          "expr": "histogram_quantile(0.5, sum(rate(citegrain_request_seconds_bucket[10m])) by (le))",
           "legendFormat": "p50",
           "datasource": {
             "type": "prometheus",
@@ -302,7 +302,7 @@
         },
         {
           "refId": "B",
-          "expr": "histogram_quantile(0.95, sum(rate(citelens_request_seconds_bucket[10m])) by (le))",
+          "expr": "histogram_quantile(0.95, sum(rate(citegrain_request_seconds_bucket[10m])) by (le))",
           "legendFormat": "p95",
           "datasource": {
             "type": "prometheus",
@@ -359,7 +359,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "histogram_quantile(0.95, sum(rate(citelens_retrieval_seconds_bucket[10m])) by (le))",
+          "expr": "histogram_quantile(0.95, sum(rate(citegrain_retrieval_seconds_bucket[10m])) by (le))",
           "legendFormat": "檢索 p95",
           "datasource": {
             "type": "prometheus",
@@ -370,7 +370,7 @@
         },
         {
           "refId": "B",
-          "expr": "histogram_quantile(0.95, sum(rate(citelens_llm_seconds_bucket[10m])) by (le))",
+          "expr": "histogram_quantile(0.95, sum(rate(citegrain_llm_seconds_bucket[10m])) by (le))",
           "legendFormat": "生成 p95",
           "datasource": {
             "type": "prometheus",
@@ -427,7 +427,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "histogram_quantile(0.5, sum(rate(citelens_context_tokens_bucket[10m])) by (le))",
+          "expr": "histogram_quantile(0.5, sum(rate(citegrain_context_tokens_bucket[10m])) by (le))",
           "legendFormat": "p50",
           "datasource": {
             "type": "prometheus",
@@ -438,7 +438,7 @@
         },
         {
           "refId": "B",
-          "expr": "histogram_quantile(0.95, sum(rate(citelens_context_tokens_bucket[10m])) by (le))",
+          "expr": "histogram_quantile(0.95, sum(rate(citegrain_context_tokens_bucket[10m])) by (le))",
           "legendFormat": "p95",
           "datasource": {
             "type": "prometheus",
@@ -512,7 +512,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "citelens_cost_usd_total",
+          "expr": "citegrain_cost_usd_total",
           "legendFormat": "累計成本（USD）",
           "datasource": {
             "type": "prometheus",
@@ -523,7 +523,7 @@
         },
         {
           "refId": "B",
-          "expr": "sum(citelens_query_total)",
+          "expr": "sum(citegrain_query_total)",
           "legendFormat": "查詢次數",
           "datasource": {
             "type": "prometheus",
@@ -619,7 +619,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "citelens_answer_outcome_total",
+          "expr": "citegrain_answer_outcome_total",
           "legendFormat": "{{outcome}}",
           "datasource": {
             "type": "prometheus",

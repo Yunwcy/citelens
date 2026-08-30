@@ -5,8 +5,8 @@ import { Chat, type Turn } from "./components/Chat";
 import { DocumentPanel, type Job } from "./components/DocumentPanel";
 import { SourcePanel } from "./components/SourcePanel";
 
-const LANG_KEY = "citelens.lang";
-const HISTORY_KEY = "citelens.history";
+const LANG_KEY = "citegrain.lang";
+const HISTORY_KEY = "citegrain.history";
 
 export default function App() {
   const [lang, setLang] = useState<Lang>(
@@ -234,7 +234,7 @@ export default function App() {
       <header className="flex items-center gap-2.5 px-4 py-2.5 bg-brand text-white">
         <Mark />
         <h1 className="text-base font-medium tracking-wide">
-          Cite<span className="text-accent-gold">Lens</span>
+          Cite<span className="text-accent-gold">Grain</span>
         </h1>
         <span className="text-xs text-white/55">{t.subtitle}</span>
         <button
