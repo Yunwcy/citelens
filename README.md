@@ -38,9 +38,13 @@ CiteLens 是一套面向學術 PDF 的長文件問答系統。使用者可上傳
 需求：Docker 與 Docker Compose。
 
 ```bash
+git clone https://github.com/Yunwcy/citelens.git
+cd citelens
 cp .env.example .env          # 填入 OPENAI_API_KEY
-docker compose up -d --build
+docker compose up -d --build  # 首次約 3–5 分鐘，含下載本地向量化模型
 ```
+
+啟動後開 http://localhost:3000，貼上 `https://arxiv.org/pdf/2410.05779` 即可提問。
 
 | 服務 | 位置 | 用途 |
 |---|---|---|
@@ -242,7 +246,25 @@ python scripts/check_docs.py                                 # 文件數字與�
 目前共 **68 項自動化測試**，端到端驗收另涵蓋反向代理、SSE、重啟後資料保存、
 模型離線時仍能建立索引、跨文件泛用性，以及文件數字與產出的一致性。
 
-`docs/results/` 底下每一份報表都由指令產生；README 引用的數字由
-`scripts/check_docs.py` 逐項核對，CI 於每次推送執行 —— 對不上即失敗。
+### 重現本文的量測數字
 
-完整測試說明與重現指令見 [`docs/testing.md`](docs/testing.md)。
+`docs/results/` 底下每一份報表都由指令產生，沒有一個數字是手打的。
+本節所有數字皆可由以下步驟重跑：
+
+```bash
+python -m venv .venv && .venv/bin/pip install -r backend/requirements.txt
+bash scripts/fetch_test_docs.sh                                    # 取得四篇測試論文
+.venv/bin/python scripts/eval.py --md docs/results/retrieval.md    # 檢索準確度、表格保真度、泛用性
+.venv/bin/python scripts/loadtest.py --md docs/results/load.md     # 併發（需服務已啟動）
+.venv/bin/python scripts/report.py --container --md docs/results/runtime.md  # 成本與回答品質
+```
+
+README 引用的數字由 `scripts/check_docs.py` 逐項核對，CI 於每次推送執行 —— 對不上即失敗。
+
+從零建置驗證（`--no-cache` 重建，確認相依都有宣告而非本機剛好有）：
+
+```bash
+bash scripts/verify_clean_build.sh                                 # 約 10–20 分鐘
+```
+
+完整測試說明與所有選項見 [`docs/testing.md`](docs/testing.md)。
