@@ -12,20 +12,28 @@
 | compare lightRAG with GraphRAG | Comparison / Cost | ✗ 未進前 10（涵蓋 0/2） | 1（涵蓋 1/2） | 1（涵蓋 2/2） |
 | Performance of ablated versions of LightRAG | Ablation | ✗ 未進前 10 | ✗ 未進前 10 | 1 |
 | 消融實驗的結果如何？ | Ablation | ✗ 未進前 10 | 1 | 1 |
-| LightRAG 和 GraphRAG 有什麼差別 | Comparison / Cost | ✗ 未進前 10（涵蓋 0/2） | 1（涵蓋 1/2） | 1（涵蓋 2/2） |
+| LightRAG 和 GraphRAG 有什麼差別 | Comparison / Cost | ✗ 未進前 10（涵蓋 0/2） | 1（涵蓋 1/2） | 1（涵蓋 1/2） |
 | How does LightRAG build its graph index? | Graph-based | ✗ 未進前 10 | 1 | 2 |
 | 圖索引是怎麼建立的？ | Graph-based | ✗ 未進前 10 | 1 | 1 |
 | What is the dual-level retrieval paradigm? | Dual-level | ✗ 未進前 10 | 1 | 1 |
-| 雙層檢索是什麼意思？ | Dual-level | ✗ 未進前 10 | 1 | 1 |
+| 雙層檢索是什麼意思？ | Dual-level | ✗ 未進前 10 | 1 | 3 |
 | What datasets were used in the experiments? | Experimental Settings | ✗ 未進前 10 | 1 | 1 |
-| 這篇論文用了哪些資料集？ | Experimental Settings | ✗ 未進前 10 | 2 | △ 4 |
-| How many tokens does GraphRAG need compared to LightRAG? | Cost | ✗ 未進前 10 | ✗ 未進前 10 | 3 |
+| 這篇論文用了哪些資料集？ | Experimental Settings | ✗ 未進前 10 | 2 | △ 7 |
+| How many tokens does GraphRAG need compared to LightRAG? | Cost | ✗ 未進前 10 | ✗ 未進前 10 | △ 4 |
 
 設定：
 
-- **1 基準版**：切塊 `fixed`（固定視窗 450 token、重疊 60，不看結構） · 檢索 `vector` · 表格處理 `關閉` · 37 個片段、0 張表
+- **1 基準版**：切塊 `fixed` · 檢索 `vector` · 表格處理 `關閉` · 37 個片段、0 張表
 - **2 加結構感知**：切塊 `section` · 檢索 `vector` · 表格處理 `關閉` · 51 個片段、0 張表
 - **3 完整系統**：切塊 `section` · 檢索 `hybrid` · 表格處理 `開啟` · 91 個片段、5 張表
+
+命中率（分母 12 題，看首個命中的名次）：
+
+| 設定 | 前 8 名（＝實際送進模型的片段數） | 前 3 名 |
+|---|---:|---:|
+| 1 基準版 | **0/12（0%）** | **0/12（0%）** |
+| 2 加結構感知 | **10/12（83%）** | **9/12（75%）** |
+| 3 完整系統 | **12/12（100%）** | **10/12（83%）** |
 
 ## 表格保真度
 
@@ -59,4 +67,3 @@
 章節來源：`toc` 為 PDF 內建大綱，`regex` 為編號規則，`font` 為字型分群。
 四篇皆成功取得章節結構，其中一篇無內建大綱而由第二級規則接手。
 
-_評估耗時 34 秒_

@@ -93,6 +93,20 @@ def check_measurements() -> list[str]:
     ):
         compare(label, _cell(rd, rd_pat), _cell(retrieval, rp_pat))
 
+    # 檢索準確度是這個專案的招牌數字，先前卻是手算的、沒有任何腳本產生它 ——
+    # 系統改過之後它悄悄變成錯的（宣稱 95%、21/22，而測試集只有 12 題）。
+    # 現在 eval.py 會算，這裡逐列比對。用順序而非標籤比對：兩份文件的
+    # 列名寫法本來就不同（「＋結構感知切塊」vs「2 加結構感知」），
+    # 拿標籤去配對只會配不到，然後靜靜地什麼都沒檢查。
+    rd_rates = re.findall(r"^\|[^|]+\| \*\*(\d+)%\*\*", rd, re.M)
+    rp_rates = re.findall(r"^\| \d [^|]+\| \*\*\d+/\d+（(\d+)%）\*\*", retrieval, re.M)
+    if len(rd_rates) != 3 or len(rp_rates) != 3:
+        bad.append(f"檢索命中率：抓不到三列（README {len(rd_rates)} 列、"
+                   f"報表 {len(rp_rates)} 列）")
+    else:
+        for i, (a, b) in enumerate(zip(rd_rates, rp_rates), 1):
+            compare(f"檢索命中率（第 {i} 組設定）", a, b)
+
     load = (RESULTS / "load.md").read_text(encoding="utf-8")
     for label in ("1 併發", "20 併發"):
         compare(

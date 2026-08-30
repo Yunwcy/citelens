@@ -21,6 +21,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "backend"))
 
+from app.config import settings  # noqa: E402
 from app.retrieval.index import DocumentIndex  # noqa: E402
 from app.services.ingest import ingest  # noqa: E402
 
@@ -116,6 +117,27 @@ def run_retrieval() -> list[str]:
         out.append(f"- **{name}**：切塊 `{cfg['strategy']}` · 檢索 `{cfg['mode']}` · "
                    f"表格處理 `{'開啟' if cfg['use_tables'] else '關閉'}` · "
                    f"{stats[name]['chunks']} 個片段、{stats[name]['tables']} 張表")
+
+    # 彙總。判準取 settings.top_k —— 系統實際送給模型的就是這麼多片段，
+    # 所以「目標章節有沒有被送進去」才是要問的問題。
+    # 另附前 3 名這個更嚴格的視角，兩個都列出來，不挑對自己有利的。
+    k_real = settings.top_k
+    out += ["", f"命中率（分母 {len(CASES)} 題，看首個命中的名次）：", "",
+            f"| 設定 | 前 {k_real} 名（＝實際送進模型的片段數） | 前 3 名 |",
+            "|---|---:|---:|"]
+    for name, _ in CONFIGS:
+        cells = []
+        for k in (k_real, 3):
+            n = sum(1 for c in CASES
+                    if (rk := results[name][c.query][0]) is not None and rk <= k)
+            cells.append(f"**{n}/{len(CASES)}（{n / len(CASES):.0%}）**")
+        REPORT["retrieval_summary"] = REPORT.get("retrieval_summary", {})
+        REPORT["retrieval_summary"][name] = {
+            f"top{k}": sum(1 for c in CASES
+                           if (rk := results[name][c.query][0]) is not None and rk <= k)
+            for k in (k_real, 3)}
+        out.append(f"| {name} | " + " | ".join(cells) + " |")
+
     return out + [""]
 
 
@@ -181,14 +203,17 @@ def main() -> None:
         parts += run_tables()
     if args.only in (None, "generality"):
         parts += run_generality()
-    parts += [f"_評估耗時 {time.perf_counter() - started:.0f} 秒_"]
-
     text = "\n".join(parts)
     print(text)
+
+    # 耗時只印在畫面上，不寫進報表 —— 它隨機器與當下負載改變，
+    # 留在檔案裡會讓「同樣的輸入產生同樣的報表」這件事無法驗證。
+    elapsed = f"評估耗時 {time.perf_counter() - started:.0f} 秒"
+    print(f"\n{elapsed}")
     if args.md:
         Path(args.md).parent.mkdir(parents=True, exist_ok=True)
-        Path(args.md).write_text(text, encoding="utf-8")
-        print(f"\n已寫入 {args.md}")
+        Path(args.md).write_text(text + "\n", encoding="utf-8")
+        print(f"已寫入 {args.md}")
 
     if args.publish:
         import httpx
