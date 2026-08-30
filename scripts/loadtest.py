@@ -12,7 +12,6 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
-import statistics
 import sys
 import time
 from pathlib import Path
@@ -119,8 +118,9 @@ async def main() -> None:
         )
 
     # 結論由數字推導，不預先斷言：比較同一併發等級下有無同時上傳的差異
-    without = statistics.median(rows[-2]["retrieval"]) if rows[-2]["retrieval"] else 0
-    with_up = statistics.median(rows[-1]["retrieval"]) if rows[-1]["retrieval"] else 0
+    # 與上表同一個 pct()：換成 statistics.median 會讓結論句與自己的表格對不上
+    without = pct(rows[-2]["retrieval"], .5)
+    with_up = pct(rows[-1]["retrieval"], .5)
     delta = (with_up - without) / without * 100 if without else 0
     verdict = ("上傳不會排擠查詢" if abs(delta) < 30
                else f"上傳仍會排擠查詢（檢索中位數增加 {delta:.0f}%）")
