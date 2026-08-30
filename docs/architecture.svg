@@ -102,7 +102,7 @@
 <circle cx="921.0" cy="647.0" r="2" fill="#a8842c"/>
 <text x="931.0" y="651.0" font-size="12.5" fill="#4b5565">RRF 名次合併</text>
 <circle cx="921.0" cy="670.5" r="2" fill="#a8842c"/>
-<text x="931.0" y="674.5" font-size="12.5" fill="#4b5565">預算組裝（token-aware）</text>
+<text x="931.0" y="674.5" font-size="12.5" fill="#4b5565">依 token 預算組裝</text>
 <rect x="1120.0" y="546.0" width="203.0" height="206.0" rx="10" fill="#ffffff" stroke="#e6d2a8" stroke-width="2.4"/>
 <rect x="1136.0" y="564" width="14" height="12" rx="1.5" stroke="#8a6a2f" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M1136.0 568.5 h14 M1142.0 568.5 v7.5" stroke="#8a6a2f" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
 <text x="1160.0" y="575.0" font-size="15.5" fill="#12161f" font-weight="600">表格</text>
