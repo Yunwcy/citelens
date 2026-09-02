@@ -20,6 +20,7 @@ export interface Strings {
   passages: (n: number) => string;
   tables: (n: number) => string;
   stillProcessing: string;
+  duplicateNotice: string;
   stage: Record<string, string>;
 
   chat: string;
@@ -83,6 +84,7 @@ export const STRINGS: Record<Lang, Strings> = {
     passages: (n: number) => `${n} 個片段`,
     tables: (n: number) => `${n} 張表`,
     stillProcessing: "處理中，可繼續使用其他文件",
+    duplicateNotice: "這份文件已在清單中，直接沿用既有索引（依內容雜湊比對，不重新解析）",
     stage: {
       queued: "排隊中", parsing: "解析中", indexing: "建立索引",
       summarizing: "摘要準備中", ready: "就緒", failed: "無法解析",
@@ -155,6 +157,7 @@ export const STRINGS: Record<Lang, Strings> = {
     passages: (n: number) => `${n} passage${n === 1 ? "" : "s"}`,
     tables: (n: number) => `${n} table${n === 1 ? "" : "s"}`,
     stillProcessing: "Still processing · other documents remain available",
+    duplicateNotice: "Already in the list — reusing the existing index (matched by content hash, not re-parsed)",
     stage: {
       queued: "Queued", parsing: "Parsing", indexing: "Indexing",
       summarizing: "Summarizing", ready: "Ready", failed: "Can't parse",

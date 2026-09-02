@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { DocSummary } from "../api";
 import type { Strings } from "../i18n";
 
@@ -16,6 +16,7 @@ type Props = {
   activeId: string | null;
   job: Job | null;
   error: string | null;
+  notice: string | null;
   t: Strings;
   onSelect: (id: string) => void;
   onUpload: (file: File) => void;
@@ -24,12 +25,19 @@ type Props = {
 };
 
 export function DocumentPanel({
-  documents, activeId, job, error, t, onSelect, onUpload, onUploadUrl, onDelete,
+  documents, activeId, job, error, notice, t, onSelect, onUpload, onUploadUrl, onDelete,
 }: Props) {
   const input = useRef<HTMLInputElement>(null);
+  const activeCard = useRef<HTMLDivElement>(null);
   const [url, setUrl] = useState("");
   const [confirming, setConfirming] = useState<string | null>(null);
   const busy = job !== null && job.stage !== "ready" && job.stage !== "failed";
+
+  // 重複上傳會直接切到那份文件，但它可能在清單捲動範圍之外 ——
+  // 不捲進來的話，畫面上看起來仍然像什麼都沒發生。
+  useEffect(() => {
+    activeCard.current?.scrollIntoView({ block: "nearest" });
+  }, [activeId]);
 
   return (
     <aside className="w-60 shrink-0 flex flex-col border-r border-line">
@@ -43,7 +51,7 @@ export function DocumentPanel({
         const asking = confirming === d.doc_id;
         return (
           // 卡片本身是按鈕，刪除鈕不能巢狀其中 —— 改為絕對定位的同層元素
-          <div key={d.doc_id} className="relative group">
+          <div key={d.doc_id} ref={active ? activeCard : null} className="relative group">
             <button
               onClick={() => onSelect(d.doc_id)}
               className={`w-full text-left rounded-lg border p-2.5 transition-colors ${
@@ -162,6 +170,12 @@ export function DocumentPanel({
         </div>
       </div>
 
+      {notice && (
+        <p className="text-xs text-ink-soft px-2 py-1.5 leading-relaxed rounded-lg
+                      border border-accent-gold/50 bg-accent-soft/40">
+          {notice}
+        </p>
+      )}
       {error && <p className="text-xs text-red-700 px-1 leading-relaxed">{error}</p>}
       </div>
     </aside>

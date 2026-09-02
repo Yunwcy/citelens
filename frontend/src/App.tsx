@@ -22,6 +22,9 @@ export default function App() {
   const [job, setJob] = useState<Job | null>(null);
   const [ready, setReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // 重複上傳不是錯誤，但畫面上「閃一下就結束」看起來像沒反應，所以要明說。
+  const [notice, setNotice] = useState<string | null>(null);
+  const noticeTimer = useRef<number | null>(null);
   const [quick, setQuick] = useState<string[]>([]);
   // 對話依文件保存。切換文件時清空會讓誤觸側欄＝刪除紀錄，
   // 而使用者常在讀答案時順手點到另一份文件。
@@ -135,11 +138,22 @@ export default function App() {
   const handleUploadUrl = (url: string) =>
     start(() => api.uploadFromUrl(url), lang === "zh" ? "由網址匯入" : "From link");
 
+  /** 暫時性提示。計時器存在 ref 裡，連續兩次提示不會被前一次的計時器提早清掉。 */
+  function showNotice(msg: string) {
+    setNotice(msg);
+    if (noticeTimer.current !== null) window.clearTimeout(noticeTimer.current);
+    noticeTimer.current = window.setTimeout(() => {
+      setNotice(null);
+      noticeTimer.current = null;
+    }, 6000);
+  }
+
   async function start(
     begin: () => Promise<{ job_id: string; doc_id: string }>,
     label: string,
   ) {
     setError(null);
+    setNotice(null);
     try {
       const { job_id, doc_id } = await begin();
       setJob({ docId: doc_id, filename: label, stage: "queued" });
@@ -154,11 +168,19 @@ export default function App() {
         if (ev.stage === "ready") {
           await refresh();
           setJob(null);
-          // 只有在使用者沒有切走時才自動開啟，避免打斷正在進行的對話
-          setActiveId((cur) => {
-            if (cur === null || cur === doc_id) { void select(doc_id); return doc_id; }
-            return cur;
-          });
+          if (ev.cached) {
+            // 重複上傳：使用者剛剛才指名這份文件，直接切過去並說明為什麼沒有
+            // 進度條。否則畫面只會閃一下，看起來像沒反應。
+            showNotice(t.duplicateNotice);
+            void select(doc_id);
+            setActiveId(doc_id);
+          } else {
+            // 背景索引完成：只有在使用者沒有切走時才自動開啟，避免打斷進行中的對話
+            setActiveId((cur) => {
+              if (cur === null || cur === doc_id) { void select(doc_id); return doc_id; }
+              return cur;
+            });
+          }
           break;
         }
       }
@@ -248,7 +270,7 @@ export default function App() {
 
       <div className="flex-1 min-h-0 flex">
         <DocumentPanel
-          documents={documents} activeId={activeId} job={job} error={error} t={t}
+          documents={documents} activeId={activeId} job={job} error={error} notice={notice} t={t}
           onSelect={select} onUpload={handleUpload} onUploadUrl={handleUploadUrl}
           onDelete={handleDelete}
         />
