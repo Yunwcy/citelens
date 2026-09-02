@@ -30,6 +30,10 @@ class PackedContext:
     limit: int = 0
     dropped: list[str] = field(default_factory=list)                      # 被捨棄的片段編號
     truncated: list[str] = field(default_factory=list)
+    # 由資料算出來、必須讓模型看到的統計。放在脈絡區塊裡會被當成一般內容略過 ——
+    # 實測埋在 6,000 字的表格片段開頭時，模型照樣寫出與它相反的結論。
+    # 因此改由呼叫端接在問題後面，那是提示詞裡最不會被跳過的位置。
+    facts: list[str] = field(default_factory=list)
 
     @property
     def budget(self) -> int:

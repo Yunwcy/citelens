@@ -225,9 +225,20 @@ def gate_golden(doc_id: str) -> None:
     ]
     # 結論不得與同一則回答裡的表格矛盾。實測 48 組比較中有 8 組變體優於
     # 完整版，「在所有資料集與指標上都優於各變體」是明確的錯誤陳述。
+    # 「all 16 comparisons」「四個資料集全部」這種帶計數的說法不算全稱誤述 ——
+    # 提示詞要求的正是寫出計數。只有沒有計數的「all／所有」才是要抓的目標。
+    # 抓的是「勝過『各變體』across all」這種說法。
+    # 「outperforms NaiveRAG across all metrics」是對參照方法的敘述且為真 ——
+    # 一併抓進來會讓這個檢查在正確答案上變紅，紅燈就失去意義。
+    # 同理，「in all 4 datasets」帶了計數，正是提示詞要求的寫法。
+    _NO_COUNT = r"(all|所有)(?!\s*(\d|one|two|three|four|five|six|seven|eight|nine|ten|[一二三四五六七八九十兩]))"
+    _VARIANT = r"(variant|version|ablat\w*|變體|版本|消融)"
     overclaim = re.search(
-        r"(outperform\w*|優於|优于)[^.。\n]{0,60}?(all|所有)"
-        r"[^.。\n]{0,40}(dataset|metric|資料集|指標|variant|變體)", c["text"], re.I)
+        rf"(outperform\w*|優於|优于)[^.。\n]{{0,40}}{_VARIANT}[^.。\n]{{0,40}}{_NO_COUNT}"
+        rf"|(outperform\w*|優於|优于)[^.。\n]{{0,40}}{_NO_COUNT}[^.。\n]{{0,40}}{_VARIANT}"
+        # 中文語序常是「在所有…上都優於…」，全稱詞出現在動詞之前
+        rf"|{_NO_COUNT}[^.。\n]{{0,40}}(優於|优于)[^.。\n]{{0,20}}{_VARIANT}",
+        c["text"], re.I)
     check("③ 消融　結論未做全稱誤述", not overclaim,
           overclaim.group(0)[:70] if overclaim else "已依證據限定")
 
@@ -358,7 +369,8 @@ def gate_tally(doc_id: str) -> None:
     check("文件含數值型表格", bool(data), f"{len(data)} 張")
     a = ask(doc_id, "compare lightRAG with GraphRAG")
     check("比較答案採用了算好的統計而非全稱",
-          not re.search(r"(outperform\w*|優於)[^.。\n]{0,60}?(all|所有)"
+          not re.search(r"(outperform\w*|優於)[^.。\n]{0,60}?"
+                        r"(all|所有)(?!\s*(\d|one|two|three|four|five|six|seven|eight|nine|ten|[一二三四五六七八九十兩]))"
                         r"[^.。\n]{0,40}(dataset|資料集)", a["text"], re.I),
           "已依統計限定")
 

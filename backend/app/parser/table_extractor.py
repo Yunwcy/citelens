@@ -479,6 +479,159 @@ def _tally(label: str, vals: dict[str, str]) -> str:
     return note + (f"，落後於 {opponent} 的是：{'、'.join(losses)}）" if losses else "，無例外）")
 
 
+Rows = list[tuple[str, dict[str, str]]]
+
+
+def shared_reference(rows: Rows) -> str:
+    """每一列都拿同一個方法當對照時，回傳那個方法名，否則空字串。
+
+    兩兩對比表有兩種，結構相同但要問的問題不同：
+      · 一個主體對多個對手 —— 每列各自成立，逐列統計（`_tally`）就夠
+      · 多個主體對同一個對照 —— 讀者要的是**主體之間誰比較好**，
+        而那必須跨列比較，逐列統計答不出來
+
+    主體不從列標題判斷。實測列標題可能寫的是對照方法而不是主體
+    （多區塊表格的第一個區塊常如此），改由「哪一個名字出現在每一列」決定，
+    對版面差異穩健得多。
+    """
+    per_row: list[set[str]] = []
+    for _, vals in rows:
+        m = [_PERCENT.fullmatch(v.strip()) for v in vals.values()]
+        if not vals or not all(m):
+            return ""
+        who = {c.split(" / ")[1].strip() for c in vals if " / " in c}
+        if len(who) != 2:
+            return ""
+        per_row.append(who)
+    if not per_row:
+        return ""
+    common = set.intersection(*per_row)
+    if len(common) != 1:
+        return ""
+    ref = next(iter(common))
+    subjects = {next(iter(w - {ref})) for w in per_row}
+    return ref if len(subjects) >= 2 else ""
+
+
+def _subject_matrix(rows: Rows, ref: str) -> dict[tuple[str, str], dict[str, float]]:
+    """(指標, 資料集) → 主體 → 對 ref 的勝率。指標取自列標題的最後一段。"""
+    out: dict[tuple[str, str], dict[str, float]] = {}
+    for label, vals in rows:
+        metric = label.split(" / ")[-1].strip()
+        for col, val in vals.items():
+            if " / " not in col:
+                return {}
+            ds, who = (x.strip() for x in col.split(" / ", 1))
+            if who == ref:
+                continue
+            m = _PERCENT.fullmatch(val.strip())
+            if not m:
+                return {}
+            out.setdefault((metric, ds), {})[who] = float(m.group(1))
+    return out
+
+
+def cross_subject_note(rows: Rows, ref: str) -> str:
+    """多主體共用同一對照時，把「主體之間誰領先」逐格算好附上。
+
+    與 `_tally` 同一個原理：模型不可靠地執行「逐一核對數十格再下結論」，
+    所以能由資料算出來的事實就算好給它。差別在於這裡的比較是跨列的。
+
+    刻意不預設哪一個主體是「完整版」—— 由資料決定（單獨最高的次數最多者），
+    再逐一點名它沒有領先的格子。指定主體就會變成綁定特定文件的規則。
+    """
+    matrix = _subject_matrix(rows, ref)
+    if not matrix:
+        return ""
+    subjects = {s for row in matrix.values() for s in row}
+    if len(subjects) < 2:
+        return ""
+
+    sole: dict[str, int] = {s: 0 for s in subjects}
+    cells = []
+    for (metric, ds), row in matrix.items():
+        if len(row) != len(subjects):
+            return ""                       # 有缺格就不要給半套統計
+        top = max(row.values())
+        leaders = [s for s, v in row.items() if v == top]
+        if len(leaders) == 1:
+            sole[leaders[0]] += 1
+        cells.append((metric, ds, row, top, leaders))
+    if not cells:
+        return ""
+
+    focus = max(sole, key=lambda s: sole[s])
+    behind, tied = [], []
+    for metric, ds, row, top, leaders in cells:
+        if row[focus] < top:
+            behind.append(f"{metric}／{ds}（{leaders[0]} {top:g} > {focus} {row[focus]:g}）")
+        elif leaders != [focus]:
+            tied.append(f"{metric}／{ds}")
+
+    # 「單獨最高」只說明主體之間的排名，不說明它有沒有贏過參照方法。
+    # 實測模型會把「在基準方法中排名最高」讀成「勝過參照方法」——
+    # 兩者在同一張表上可以同時成立與不成立，所以要把方向講死。
+    above = sum(1 for _, _, row, _, _ in cells if row[focus] > 50)
+    direction = (f"{focus} 有 {above}/{len(cells)} 組高於 50%"
+                 + ("（即多數情況勝過 " + ref + "）。" if above * 2 > len(cells)
+                    else f"（即多數情況仍落後於 {ref}，「排名最高」不等於勝過 {ref}）。"))
+    out = [f"⚠ 跨列統計（由表格逐格算出，直接採用，不要自己重數）：",
+           f"本表每一列是某個方法對同一個參照方法 {ref} 的勝率，數值 > 50% 才代表勝過 {ref}。",
+           f"所以方法之間要比的是「對 {ref} 的勝率高低」，不是彼此直接對戰。",
+           f"共 {len(cells)} 組（指標 × 資料集），單獨最高次數最多的是 "
+           f"{focus}（{sole[focus]} 組）。{direction}"]
+    if behind:
+        out.append(f"{focus} 未居首的 {len(behind)} 組：" + "、".join(behind) + "。")
+    if tied:
+        out.append(f"{focus} 與他者並列最高的 {len(tied)} 組：" + "、".join(tied) + "。")
+    if behind or tied:
+        out.append(f"因此不得寫「{focus} 在所有指標與資料集上都優於其他版本」——"
+                   f"上列就是反例，總結必須提到。")
+    else:
+        out.append(f"{focus} 在每一組皆單獨最高（{len(cells)} 組全部）。")
+    return "".join(out)
+
+
+def row_subject(vals: dict[str, str], ref: str) -> str:
+    """這一列真正的主體 —— 由欄名判斷，不看列標題。"""
+    who = {c.split(" / ")[1].strip() for c in vals if " / " in c} - {ref}
+    return next(iter(who)) if len(who) == 1 else ""
+
+
+def strip_reference_columns(line: str, ref: str, subject: str = "") -> str:
+    """把逐列文字裡對照方法那一半拿掉，欄名只留資料集名。
+
+    兩兩對比的兩個數字相加為 100%，寫兩邊等於同一件事寫兩次。
+    中文回答時這張表會直接把輸出額度吃光 —— 實測 16 列的表寫完就撞到上限，
+    後面的解讀整段消失。壓成一半之後才放得下解讀。
+    """
+    if "：" not in line:
+        return line
+    head, body = line.split("：", 1)
+    # 多區塊表格的第一個區塊，列標題常寫的是對照方法而不是主體
+    # （實測 16 列的表有 4 列如此）。標題與欄名互相矛盾時，模型會照標題解讀，
+    # 於是把整個區塊講成別的方法。以欄名判定的主體覆蓋掉標題。
+    if subject and "】 " in head:
+        pre, label = head.split("】 ", 1)
+        if not label.startswith(subject):
+            head = f"{pre}】 {subject} / {label.split(' / ')[-1]}"
+    tail = ""
+    if "（" in body:
+        body, tail = body.split("（", 1)
+        tail = "（" + tail
+    kept = []
+    for seg in body.split("；"):
+        if " = " not in seg or " / " not in seg:
+            kept.append(seg)
+            continue
+        col, val = seg.split(" = ", 1)
+        ds, who = (x.strip() for x in col.split(" / ", 1))
+        if who == ref:
+            continue
+        kept.append(f"{ds} = {val}")
+    return head + "：" + "；".join(kept) + tail
+
+
 def linearize(table: Table) -> list[str]:
     """逐列轉成「欄名 = 值」的自然語言，讓關鍵字與語意檢索都能命中。"""
     head = f"【{table.caption or table.table_id} · p.{table.page}】"

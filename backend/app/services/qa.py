@@ -15,6 +15,7 @@ from dataclasses import asdict, dataclass, field
 from app.config import settings
 from app.llm import client, prompts
 from app.models import Chunk
+from app.parser import table_extractor
 from app.observability import metrics
 from app.retrieval.budget import PackedContext, pack
 from app.retrieval.hybrid import rrf
@@ -107,12 +108,14 @@ async def answer(
     ctx = pack(chunks, all_chunks=index.chunks, question=question)
     if r.name == "comparison":
         ctx = _focus_table_blocks(ctx, r.entities)
+    ctx = _recast_pairwise_tables(ctx, index)
 
     route = r.name
     system = prompts.COMPARISON_SYSTEM if route == "comparison" else prompts.ANSWER_SYSTEM
     system += prompts.LANGUAGE_DIRECTIVE[language_of(question)]
     prompt = prompts.ANSWER_USER.format(
-        context=ctx.render(lambda c: _cite_label(c)), question=question
+        context=ctx.render(lambda c: _cite_label(c)), question=question,
+        facts=prompts.render_facts(ctx.facts),
     )
 
     result = await client.generate(prompt, system=system)
@@ -196,6 +199,45 @@ def _multi_search(index: DocumentIndex, queries: list[str], top_k: int | None) -
         (fused[i] for i in picked if i in fused),
         key=lambda h: h.score, reverse=True,
     )
+
+
+def _recast_pairwise_tables(ctx, index):
+    """整表片段若是「多個方法各自對同一個參照」的兩兩對比，就地改寫成精簡形式。
+
+    做兩件事，都只動送進模型的文字，不動索引 ——
+    索引不變，檢索結果與離線評估才不會跟著漂移：
+
+    1. **砍掉對照方法那一半數值。** 兩個數字相加為 100%，寫兩邊是同一件事寫兩次。
+       實測中文提問時，這張 16 列的表會把輸出額度吃光，後面的逐項解讀整段被截斷。
+    2. **附上跨列統計。** 逐列統計說的是「這一列的方法贏參照方法幾次」，
+       答不了「這些方法彼此誰比較好」。後者要跨列算，而模型自己數十六格不可靠。
+
+    統計只用**這個片段實際留下的列**計算 —— 比較類問題會先濾掉不相關的列，
+    用整張表算會講到畫面上根本沒有的方法。
+    """
+    for i, (n, chunk, shown) in enumerate(ctx.blocks):
+        if chunk.kind != "table_full":
+            continue
+        table = index.tables.get(chunk.meta.get("table_id", ""))
+        if table is None or not table.rows:
+            continue
+        lines = shown.split("\n")
+        present = [r for r in table.rows if any(f"】 {r[0]}：" in ln for ln in lines)]
+        ref = table_extractor.shared_reference(present)
+        if not ref:
+            continue
+        note = table_extractor.cross_subject_note(present, ref)
+        subj = {f"】 {label}：": table_extractor.row_subject(vals, ref)
+                for label, vals in present}
+        body = [table_extractor.strip_reference_columns(
+                    ln, ref, next((v for k, v in subj.items() if k in ln), ""))
+                for ln in lines]
+        if note:
+            ctx.facts.append(note)
+        ctx.blocks[i] = (n, chunk, "\n".join(body))
+
+    ctx.used_tokens = sum(tokens.count(text) for _, _, text in ctx.blocks)
+    return ctx
 
 
 def _focus_table_blocks(ctx, entities: list[str]):
@@ -415,12 +457,14 @@ async def answer_stream(
     ctx = pack(chunks, all_chunks=index.chunks, question=question)
     if r.name == "comparison":
         ctx = _focus_table_blocks(ctx, r.entities)
+    ctx = _recast_pairwise_tables(ctx, index)
     yield {"type": "stage", "stage": "packing",
            "packed": len(ctx.blocks), "tokens": ctx.used_tokens, "budget": ctx.budget}
 
     system = prompts.COMPARISON_SYSTEM if r.name == "comparison" else prompts.ANSWER_SYSTEM
     system += prompts.LANGUAGE_DIRECTIVE[language_of(question)]
-    prompt = prompts.ANSWER_USER.format(context=ctx.render(_cite_label), question=question)
+    prompt = prompts.ANSWER_USER.format(context=ctx.render(_cite_label), question=question,
+                                        facts=prompts.render_facts(ctx.facts))
 
     yield {"type": "stage", "stage": "generating"}
     llm_started = time.perf_counter()
