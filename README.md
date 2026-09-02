@@ -208,6 +208,9 @@ GET  /api/jobs/{id}/events       # 索引進度（SSE 串流）
 GET  /api/metrics                # Prometheus 指標
 ```
 
+文件識別碼取自內容的 SHA-256，因此同一份檔案重複上傳（或同一個網址重複匯入）
+會命中既有索引：不重新解析、不佔第二份儲存空間，介面直接切到那份文件並說明原因。
+
 完整 API（含文件清單、詳情、刪除、摘要）：Swagger UI → `http://localhost:8000/docs`
 
 ### MCP server
