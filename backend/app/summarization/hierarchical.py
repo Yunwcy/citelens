@@ -58,7 +58,12 @@ async def build(
     十四秒的空白畫面會被當成當機，而這正好是最值得展示的一段。
     """
     note = on_progress or (lambda *_: None)
-    async with _lock_for(doc_id):
+    lock = _lock_for(doc_id)
+    # 上傳後立刻問摘要時，背景那次還握著鎖。這裡不重做，但要先讓畫面知道
+    # 正在等 —— 否則等鎖的那十幾秒完全沒有回饋，看起來就像當機。
+    if lock.locked():
+        note("wait", 0, 1)
+    async with lock:
         return await _build(doc_id, sections, lang, note)
 
 

@@ -149,16 +149,22 @@ export function Chat({ turns, quickQuestions, ready, busy, t, onAsk, onCite }: P
 function Waiting({ turn, t }: { turn: Turn; t: Strings }) {
   const p = turn.progress;
   if (p) {
+    // wait 是「背景那次還沒做完，這裡在等」，不屬於 map-reduce 的兩個步驟。
+    // 標成步驟 1/2 會讓進度看起來倒退，所以只顯示說明不顯示步數。
+    const waiting = p.phase === "wait";
     const step = p.phase === "map" ? 1 : 2;
-    const pct = p.total ? (p.done / p.total) * 100 : 0;
+    const pct = waiting ? 0 : p.total ? (p.done / p.total) * 100 : 0;
     return (
       <div className="flex flex-col gap-1.5 max-w-[22rem]">
         <span className="text-ink-soft text-xs">
-          {t.summaryPhase(step, t.summaryStepLabel[p.phase] ?? p.phase, p.done, p.total)}
+          {waiting
+            ? t.summaryStepLabel.wait
+            : t.summaryPhase(step, t.summaryStepLabel[p.phase] ?? p.phase, p.done, p.total)}
         </span>
         <div className="h-1 rounded-full bg-line overflow-hidden">
-          <div className="h-full bg-accent transition-[width] duration-300"
-               style={{ width: `${Math.max(pct, 4)}%` }} />
+          <div className={`h-full bg-accent transition-[width] duration-300${
+                 waiting ? " animate-pulse" : ""}`}
+               style={{ width: waiting ? "100%" : `${Math.max(pct, 4)}%` }} />
         </div>
       </div>
     );

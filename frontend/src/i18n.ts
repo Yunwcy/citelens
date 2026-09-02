@@ -101,7 +101,7 @@ export const STRINGS: Record<Lang, Strings> = {
     streamStage: {
       retrieving: "檢索中…", packing: "整理片段…", generating: "產生回答…",
     },
-    summaryStepLabel: { map: "逐節摘要", merge: "合併摘要" },
+    summaryStepLabel: { wait: "背景正在建立，稍候接手", map: "逐節摘要", merge: "合併摘要" },
     summaryPhase: (step, label, done, total) =>
       `全文摘要 · 步驟 ${step}/2：${label}` + (total > 1 ? `（${done}/${total}）` : "…"),
     stripMode: {
@@ -175,7 +175,7 @@ export const STRINGS: Record<Lang, Strings> = {
       retrieving: "Searching…", packing: "Assembling passages…",
       generating: "Writing the answer…",
     },
-    summaryStepLabel: { map: "Section summaries", merge: "Merging" },
+    summaryStepLabel: { wait: "Waiting for the background build", map: "Section summaries", merge: "Merging" },
     summaryPhase: (step, label, done, total) =>
       `Document-wide summary · Step ${step}/2: ${label}` +
       (total > 1 ? ` (${done}/${total})` : "…"),
