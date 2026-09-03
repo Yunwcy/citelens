@@ -1,6 +1,9 @@
 /** 後端介面。SSE 走 fetch 串流而非 EventSource —— 查詢是 POST，EventSource 只支援 GET。 */
 
-const BASE = import.meta.env.VITE_API ?? "http://localhost:8000";
+// 一律走同源路徑：容器由 nginx 代理，開發由 vite 代理（見 vite.config.ts）。
+// 預設值不是 localhost:8000 —— 那會在忘記注入 VITE_API 時被寫死進 bundle，
+// 而瀏覽器從 :3000 打 :8000 是跨來源，會被擋成 Failed to fetch。
+const BASE = import.meta.env.VITE_API ?? "";
 
 export type DocSummary = {
   doc_id: string;
