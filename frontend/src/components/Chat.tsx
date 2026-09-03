@@ -26,7 +26,8 @@ type Props = {
   busy: boolean;
   t: Strings;
   onAsk: (q: string) => void;
-  onCite: (n: number) => void;
+  /** 引用編號與它屬於第幾回合 —— 右側面板要能切回舊回合的來源。 */
+  onCite: (n: number, turn: number) => void;
 };
 
 export function Chat({ turns, quickQuestions, ready, busy, t, onAsk, onCite }: Props) {
@@ -93,7 +94,7 @@ export function Chat({ turns, quickQuestions, ready, busy, t, onAsk, onCite }: P
                     <span aria-hidden="true">◍</span>{t.declinedBadge}
                   </p>
                 )}
-                <Markdown text={turn.answer} onCite={onCite} />
+                <Markdown text={turn.answer} onCite={(n) => onCite(n, i)} />
               </div>
             )}
 

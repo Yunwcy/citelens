@@ -22,6 +22,8 @@ export default function App() {
   const [job, setJob] = useState<Job | null>(null);
   const [ready, setReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // 右側來源面板正在顯示第幾回合；null 表示跟著最新一則。
+  const [srcTurn, setSrcTurn] = useState<number | null>(null);
   // 重複上傳不是錯誤，但畫面上「閃一下就結束」看起來像沒反應，所以要明說。
   const [notice, setNotice] = useState<string | null>(null);
   const noticeTimer = useRef<number | null>(null);
@@ -87,6 +89,7 @@ export default function App() {
     setActiveId(id);
     activeIdRef.current = id;
     setReady(false);
+    setSrcTurn(null);   // 換文件等於換一組對話，來源面板要回到跟著最新一則
     try {
       const doc = await api.getDocument(id, lang);
       setQuick(doc.quick_questions);
@@ -194,6 +197,7 @@ export default function App() {
     if (!activeId || busyRef.current) return;
     busyRef.current = true;
     setBusy(true);
+    setSrcTurn(null);
     setTurns((t) => [...t, {
       question, answer: "", sources: [], debug: null,
       stage: null, progress: null, declined: false, truncated: false, broken: false,
@@ -242,11 +246,18 @@ export default function App() {
     </svg>
   );
 
-  const scrollToSource = (n: number) => {
-    document.getElementById(`src-${n}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+  // 右側面板預設跟著最新一則回答；點了舊回答的引用就切到那一則。
+  // 不切的話，點舊的編號會捲到新回答的來源，指到完全不相干的段落。
+  const scrollToSource = (n: number, turn: number) => {
+    setSrcTurn(turn);
+    // 換了來源清單之後版面才會重排，等一拍再捲
+    requestAnimationFrame(() => {
+      document.getElementById(`src-${n}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+    });
   };
 
-  const sources = turns.length ? turns[turns.length - 1].sources : [];
+  const shown = srcTurn !== null && srcTurn < turns.length ? srcTurn : turns.length - 1;
+  const sources = turns.length ? turns[shown].sources : [];
   const canAsk = ready && !!activeId;
 
   return (
